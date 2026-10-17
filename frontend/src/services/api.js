@@ -62,6 +62,20 @@ export async function deleteDrone(droneId) {
   });
 }
 
+// DELETE /api/drones (clear all drones)
+export async function deleteAllDrones() {
+  return apiFetch('/api/drones', {
+    method: 'DELETE',
+  });
+}
+
+// POST /api/drones/reset
+export async function resetFleet() {
+  return apiFetch('/api/drones/reset', {
+    method: 'POST',
+  });
+}
+
 // POST /api/dispatch-mission
 export async function dispatchMission(payload) {
   return apiFetch('/api/dispatch-mission', {
@@ -73,5 +87,26 @@ export async function dispatchMission(payload) {
 // GET /api/missions
 export async function getMissions() {
   return apiFetch('/api/missions');
+}
+
+// Database Endpoints
+export async function getDatabaseStatus() {
+  return apiFetch('/api/database/status');
+}
+
+export async function getDatabaseMissions(limit = 50) {
+  return apiFetch(`/api/database/missions?limit=${limit}`);
+}
+
+export async function getDatabaseRoutes(limit = 20) {
+  return apiFetch(`/api/database/routes?limit=${limit}`);
+}
+
+// LLM Pre-Flight Safety Advisor
+export async function checkPreFlightSafety(payload) {
+  return apiFetch('/api/ai/preflight-safety-check', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 

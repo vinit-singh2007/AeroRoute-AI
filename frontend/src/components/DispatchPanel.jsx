@@ -14,9 +14,11 @@ import {
   Zap,
   ShieldAlert,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Bot,
+  RefreshCw
 } from 'lucide-react';
-import { addDrone, deleteDrone, dispatchMission, optimizeRoute, predictBattery } from '../services/api';
+import { addDrone, deleteDrone, deleteAllDrones, dispatchMission, optimizeRoute, predictBattery, checkPreFlightSafety } from '../services/api';
 import { toast } from './Toast';
 
 const MUMBAI_HUB = {
@@ -66,10 +68,20 @@ export default function DispatchPanel({
   const [newDroneBattery,  setNewDroneBattery]  = useState(100);
   const [addLoading,       setAddLoading]       = useState(false);
 
-  // Auto-select first drone if not selected
+  // LLM Pre-Flight Safety Advisor State
+  const [llmResult,        setLlmResult]        = useState(null);
+  const [llmLoading,       setLlmLoading]       = useState(false);
+
+  // Auto-select first drone if not selected, or clear selection if fleet is empty
   useEffect(() => {
-    if (drones.length > 0 && (!selectedDroneId || !drones.find(d => d.id === selectedDroneId))) {
-      setSelectedDroneId(drones[0].id);
+    if (drones.length > 0) {
+      if (!selectedDroneId || !drones.find(d => d.id === selectedDroneId)) {
+        setSelectedDroneId(drones[0].id);
+      }
+    } else {
+      if (selectedDroneId) {
+        setSelectedDroneId('');
+      }
     }
   }, [drones, selectedDroneId]);
 
@@ -112,54 +124,87 @@ export default function DispatchPanel({
   };
 
   const resolvedDest = getResolvedDestination();
-  const selectedDrone = drones.find(d => d.id === selectedDroneId) || drones[0] || { id: 'BOM-001', max_payload_kg: 4.0, battery_pct: 100 };
+  const selectedDrone = drones.find(d => d.id === selectedDroneId) || (drones.length > 0 ? drones[0] : null);
   const flightDistanceKm = resolvedDest && resolvedDest.lat && resolvedDest.lng
     ? calcDistanceKm(MUMBAI_HUB.lat, MUMBAI_HUB.lng, resolvedDest.lat, resolvedDest.lng)
     : 10.0;
 
   // AI Predicted Battery Drain calculation
   const predictedDrainPct = Math.min(95, Math.round(flightDistanceKm * (1.1 + payloadWeight * 0.38) + 4.5));
-  const currentBattery = selectedDrone?.battery_pct !== undefined ? selectedDrone.battery_pct : 100;
-  const remainingBatteryOnArrival = Math.max(0, Math.round(currentBattery - predictedDrainPct));
+  const currentBattery = selectedDrone?.battery_pct !== undefined ? selectedDrone.battery_pct : 0;
+  const remainingBatteryOnArrival = selectedDrone ? Math.max(0, Math.round(currentBattery - predictedDrainPct)) : 0;
 
   // Overweight Check
   const maxPayload = selectedDrone?.max_payload_kg || 4.0;
-  const isOverweight = payloadWeight > maxPayload;
+  const isOverweight = selectedDrone ? (payloadWeight > maxPayload) : false;
 
   // Battery Safety Margin Check
-  const isBatteryCritical = remainingBatteryOnArrival < 20 || currentBattery < (predictedDrainPct + 10);
+  const isBatteryCritical = selectedDrone ? (remainingBatteryOnArrival < 20 || currentBattery < (predictedDrainPct + 10)) : false;
   const isBatteryTight = !isBatteryCritical && remainingBatteryOnArrival < 35;
 
-  // Pre-Flight AI Verdict
-  let aiVerdict = 'SAFE';
-  let aiVerdictLabel = '✅ DISPATCH APPROVED — SAFE FLIGHT';
-  let aiVerdictColor = 'var(--brand-accent)';
-  let aiVerdictBg = 'rgba(6,255,165,0.07)';
-  let aiVerdictBorder = 'rgba(6,255,165,0.3)';
-  let aiVerdictMessage = `AI validated: Safe payload ratio (${((payloadWeight/maxPayload)*100).toFixed(0)}%) & healthy ${remainingBatteryOnArrival}% battery reserve upon arrival.`;
+  // Call LLM Pre-Flight Safety Advisor
+  const fetchLlmSafetyCheck = async () => {
+    if (!selectedDrone || drones.length === 0) return;
+    setLlmLoading(true);
+    try {
+      const dest = getResolvedDestination();
+      const res = await checkPreFlightSafety({
+        drone_id: selectedDrone.id,
+        drone_model: selectedDrone.model || 'Phantom-Mumbai X7',
+        current_battery_pct: currentBattery,
+        max_payload_kg: maxPayload,
+        payload_weight_kg: payloadWeight,
+        flight_distance_km: flightDistanceKm,
+        predicted_drain_pct: predictedDrainPct,
+        remaining_battery_pct: remainingBatteryOnArrival,
+        destination_name: dest?.name || 'Customer Location',
+        wind_gust_ms: 5.5,
+      });
+      setLlmResult(res);
+    } catch (err) {
+      console.warn('LLM safety check error:', err);
+    } finally {
+      setLlmLoading(false);
+    }
+  };
 
-  if (isOverweight) {
-    aiVerdict = 'OVERWEIGHT';
-    aiVerdictLabel = '⛔ BLOCKED: CARGO OVERWEIGHT';
-    aiVerdictColor = 'var(--brand-danger)';
-    aiVerdictBg = 'rgba(255,61,87,0.1)';
-    aiVerdictBorder = 'rgba(255,61,87,0.4)';
-    aiVerdictMessage = `Package mass (${payloadWeight.toFixed(1)} kg) exceeds ${selectedDrone.id} limit (${maxPayload.toFixed(1)} kg). Choose a heavier drone or reduce mass.`;
-  } else if (isBatteryCritical) {
-    aiVerdict = 'CRITICAL_BATTERY';
-    aiVerdictLabel = '⚠️ UNSAFE: INSUFFICIENT CHARGE';
-    aiVerdictColor = 'var(--brand-danger)';
-    aiVerdictBg = 'rgba(255,61,87,0.1)';
-    aiVerdictBorder = 'rgba(255,61,87,0.4)';
-    aiVerdictMessage = `Current battery (${currentBattery.toFixed(0)}%) too low for ${flightDistanceKm.toFixed(1)} km delivery. Predicted drain ${predictedDrainPct}% leaves only ${remainingBatteryOnArrival}%. Need >= ${(predictedDrainPct + 20)}% charge.`;
-  } else if (isBatteryTight) {
-    aiVerdict = 'CAUTION';
-    aiVerdictLabel = '⚡ CAUTION: TIGHT RESERVE MARGIN';
-    aiVerdictColor = 'var(--brand-warning)';
-    aiVerdictBg = 'rgba(251,191,36,0.1)';
-    aiVerdictBorder = 'rgba(251,191,36,0.4)';
-    aiVerdictMessage = `Mission feasible but leaves tight ${remainingBatteryOnArrival}% reserve upon delivery. Drone should RTB immediately post-drop.`;
-  }
+  // Debounced real-time LLM evaluation on parameter changes
+  useEffect(() => {
+    if (!selectedDrone || drones.length === 0) {
+      setLlmResult(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetchLlmSafetyCheck();
+    }, 380);
+    return () => clearTimeout(timer);
+  }, [selectedDroneId, payloadWeight, destinationId, customLat, customLng, currentBattery]);
+
+  // Combined AI & LLM Verdict
+  const isLlmBlocked = llmResult?.verdict === 'BLOCKED';
+  const isLlmCaution = llmResult?.verdict === 'CAUTION';
+
+  const isBlocked = isOverweight || isBatteryCritical || isLlmBlocked;
+  const isCaution = !isBlocked && (isBatteryTight || isLlmCaution);
+
+  const aiVerdict = isBlocked ? (isOverweight ? 'OVERWEIGHT' : 'BLOCKED') : (isCaution ? 'CAUTION' : 'SAFE');
+  const aiVerdictColor = isBlocked ? 'var(--brand-danger)' : (isCaution ? 'var(--brand-warning)' : 'var(--brand-accent)');
+  const aiVerdictBg = isBlocked ? 'rgba(255,61,87,0.1)' : (isCaution ? 'rgba(251,191,36,0.1)' : 'rgba(6,255,165,0.07)');
+  const aiVerdictBorder = isBlocked ? 'rgba(255,61,87,0.4)' : (isCaution ? 'rgba(251,191,36,0.4)' : 'rgba(6,255,165,0.3)');
+
+  const aiVerdictLabel = llmResult?.status_label || (
+    isOverweight ? '⛔ BLOCKED: CARGO OVERWEIGHT' :
+    isBatteryCritical ? '⚠️ UNSAFE: INSUFFICIENT CHARGE' :
+    isBatteryTight ? '⚡ CAUTION: TIGHT RESERVE MARGIN' :
+    '✅ DISPATCH APPROVED — SAFE FLIGHT'
+  );
+
+  const aiVerdictMessage = llmResult?.analysis || (
+    isOverweight ? `Package mass (${payloadWeight.toFixed(1)} kg) exceeds ${selectedDrone.id} limit (${maxPayload.toFixed(1)} kg). Choose a heavier drone or reduce mass.` :
+    isBatteryCritical ? `Current battery (${currentBattery.toFixed(0)}%) too low for ${flightDistanceKm.toFixed(1)} km delivery. Predicted drain ${predictedDrainPct}% leaves only ${remainingBatteryOnArrival}%. Need >= ${(predictedDrainPct + 20)}% charge.` :
+    isBatteryTight ? `Mission feasible but leaves tight ${remainingBatteryOnArrival}% reserve upon delivery. Drone should RTB immediately post-drop.` :
+    `AI validated: Safe payload ratio (${((payloadWeight/maxPayload)*100).toFixed(0)}%) & healthy ${remainingBatteryOnArrival}% battery reserve upon arrival.`
+  );
 
   // 1. Add Drone to Fleet
   const handleRegisterDrone = async (e) => {
@@ -188,18 +233,39 @@ export default function DispatchPanel({
     }
   };
 
-  // 2. Delete Drone from Fleet
+  // 2. Delete Drone from Fleet (Allows deleting any drone including the last drone)
   const handleDeleteDrone = async (droneId) => {
-    if (drones.length <= 1) {
-      toast('At least one drone must remain active in the fleet', 'warning');
+    const idToDelete = droneId || selectedDroneId;
+    if (!idToDelete) {
+      toast('No drone selected to delete', 'warning');
       return;
     }
     try {
-      await deleteDrone(droneId);
-      toast(`Drone ${droneId} decommissioned from fleet`, 'info');
+      await deleteDrone(idToDelete);
+      toast(`Drone ${idToDelete} decommissioned from fleet`, 'info');
+      if (selectedDroneId === idToDelete) {
+        const remaining = drones.filter(d => d.id !== idToDelete);
+        setSelectedDroneId(remaining.length > 0 ? remaining[0].id : '');
+      }
       onRefreshFleet?.();
     } catch (err) {
       toast(`Failed to remove drone: ${err.message}`, 'error');
+    }
+  };
+
+  // 2b. Delete All Drones from Fleet
+  const handleDeleteAllDrones = async () => {
+    if (!drones || drones.length === 0) {
+      toast('Fleet is already empty', 'info');
+      return;
+    }
+    try {
+      await deleteAllDrones();
+      setSelectedDroneId('');
+      toast('All drones decommissioned from fleet', 'info');
+      onRefreshFleet?.();
+    } catch (err) {
+      toast(`Failed to clear fleet: ${err.message}`, 'error');
     }
   };
 
@@ -210,8 +276,8 @@ export default function DispatchPanel({
       toast('Please set a valid delivery destination', 'error');
       return;
     }
-    if (!selectedDroneId) {
-      toast('Please select an active drone from your fleet', 'error');
+    if (!selectedDroneId || drones.length === 0) {
+      toast('Please enlist or select an active drone from your fleet', 'error');
       return;
     }
 
@@ -332,14 +398,29 @@ export default function DispatchPanel({
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Navigation size={12} /> Assign Drone ({drones.length} active)
           </span>
-          <button
-            className="btn btn-ghost btn-sm"
-            style={{ padding: '2px 8px', fontSize: 10, borderColor: 'rgba(0,212,255,0.4)', color: 'var(--brand-primary)' }}
-            onClick={() => setShowAddDrone(!showAddDrone)}
-            id="toggle-add-drone-btn"
-          >
-            <PlusCircle size={10} /> + Add Drone
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {drones.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ padding: '2px 8px', fontSize: 10, borderColor: 'rgba(255,61,87,0.35)', color: 'var(--brand-danger)' }}
+                onClick={handleDeleteAllDrones}
+                title="Decommission all drones from fleet"
+                id="delete-all-drones-btn"
+              >
+                <Trash2 size={10} /> Delete All
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '2px 8px', fontSize: 10, borderColor: 'rgba(0,212,255,0.4)', color: 'var(--brand-primary)' }}
+              onClick={() => setShowAddDrone(!showAddDrone)}
+              id="toggle-add-drone-btn"
+            >
+              <PlusCircle size={10} /> + Add Drone
+            </button>
+          </div>
         </div>
 
         {/* Dynamic Add Drone Form Modal */}
@@ -424,33 +505,55 @@ export default function DispatchPanel({
           </form>
         )}
 
-        {/* Selected Drone Dropdown */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-          <select
-            className="form-select"
-            value={selectedDroneId}
-            onChange={e => setSelectedDroneId(e.target.value)}
-            id="drone-select"
-            style={{ flex: 1 }}
-          >
-            {drones.map(d => (
-              <option key={d.id} value={d.id}>
-                {d.id} — {d.model} ({d.battery_pct?.toFixed(0)}% Bat)
-              </option>
-            ))}
-          </select>
-          {drones.length > 1 && (
+        {/* Selected Drone Dropdown / Empty State */}
+        {drones.length > 0 ? (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+            <select
+              className="form-select"
+              value={selectedDroneId}
+              onChange={e => setSelectedDroneId(e.target.value)}
+              id="drone-select"
+              style={{ flex: 1 }}
+            >
+              {drones.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.id} — {d.model} ({d.battery_pct?.toFixed(0)}% Bat)
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              title="Decommission selected drone"
+              title={`Decommission selected drone (${selectedDroneId})`}
               onClick={() => handleDeleteDrone(selectedDroneId)}
               style={{ padding: '0 10px', color: 'var(--brand-danger)', borderColor: 'rgba(255,61,87,0.3)' }}
+              id="delete-drone-btn"
             >
               <Trash2 size={13} />
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div style={{
+            padding: '12px',
+            borderRadius: 6,
+            background: 'rgba(255,61,87,0.06)',
+            border: '1px dashed rgba(255,61,87,0.3)',
+            textAlign: 'center',
+            marginBottom: 8,
+          }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
+              No active drones in the fleet
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => setShowAddDrone(true)}
+              id="empty-state-add-drone-btn"
+            >
+              <PlusCircle size={11} style={{ marginRight: 4 }} /> Add a Drone
+            </button>
+          </div>
+        )}
 
         {/* Selected Drone Ribbon */}
         {selectedDrone && (
@@ -547,7 +650,7 @@ export default function DispatchPanel({
         </div>
       </div>
 
-      {/* ── SECTION 4: AI Pre-Flight Feasibility & Safety Check ── */}
+      {/* ── SECTION 4: AI Pre-Flight Feasibility & Safety Check (LLM Powered) ── */}
       <div className="panel-section" style={{
         background: aiVerdictBg,
         border: `1px solid ${aiVerdictBorder}`,
@@ -557,25 +660,52 @@ export default function DispatchPanel({
         boxShadow: `0 0 16px ${aiVerdictBorder}`,
         transition: 'all 200ms ease',
       }}>
-        {/* Header */}
+        {/* Header with LLM Model Tag & Refresh Button */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Sparkles size={13} color={aiVerdictColor} />
             <span style={{ fontSize: 11, fontWeight: 800, color: aiVerdictColor, letterSpacing: '0.4px', textTransform: 'uppercase' }}>
               AI Pre-Flight Safety Check
             </span>
+            <span style={{
+              fontSize: 9,
+              fontWeight: 700,
+              padding: '1px 6px',
+              borderRadius: 4,
+              background: 'rgba(0, 212, 255, 0.12)',
+              color: 'var(--brand-primary)',
+              border: '1px solid rgba(0, 212, 255, 0.3)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 3,
+            }}>
+              <Bot size={10} />
+              {llmLoading ? 'Analyzing...' : (llmResult?.source === 'groq-llm' ? '⚡ Groq Llama-3.3' : '⚡ AI LLM Engine')}
+            </span>
           </div>
-          <span style={{
-            fontSize: 9.5,
-            fontWeight: 800,
-            padding: '2px 6px',
-            borderRadius: 6,
-            background: aiVerdictBg,
-            color: aiVerdictColor,
-            border: `1px solid ${aiVerdictBorder}`,
-          }}>
-            {aiVerdict}
-          </span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              type="button"
+              onClick={fetchLlmSafetyCheck}
+              title="Re-run LLM Flight Safety Evaluation"
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '2px 6px', fontSize: 10, color: 'var(--text-muted)', borderColor: 'rgba(255,255,255,0.1)' }}
+            >
+              <RefreshCw size={10} className={llmLoading ? 'spin-anim' : ''} />
+            </button>
+            <span style={{
+              fontSize: 9.5,
+              fontWeight: 800,
+              padding: '2px 6px',
+              borderRadius: 6,
+              background: aiVerdictBg,
+              color: aiVerdictColor,
+              border: `1px solid ${aiVerdictBorder}`,
+            }}>
+              {aiVerdict}
+            </span>
+          </div>
         </div>
 
         {/* 4 Metric Badges: Distance, AI Battery Drain, Reserve on Arrival, Payload Ratio */}
@@ -638,11 +768,47 @@ export default function DispatchPanel({
           ) : (
             <CheckCircle2 size={15} style={{ flexShrink: 0, marginTop: 1 }} />
           )}
-          <div>
+          <div style={{ flex: 1 }}>
             <strong>{aiVerdictLabel}</strong>
             <div style={{ color: 'var(--text-secondary)', fontSize: 10, marginTop: 2 }}>
               {aiVerdictMessage}
             </div>
+
+            {/* LLM Key Risk Badges */}
+            {llmResult?.key_risks && llmResult.key_risks.length > 0 && (
+              <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {llmResult.key_risks.map((risk, idx) => (
+                  <span key={idx} style={{
+                    fontSize: 8.5,
+                    padding: '2px 5px',
+                    borderRadius: 4,
+                    background: 'rgba(0,0,0,0.4)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid rgba(255,255,255,0.08)'
+                  }}>
+                    • {risk}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* LLM Dispatcher Guidance */}
+            {llmResult?.recommendation && (
+              <div style={{
+                marginTop: 6,
+                padding: '5px 8px',
+                borderRadius: 4,
+                background: 'rgba(0, 212, 255, 0.06)',
+                borderLeft: '2px solid var(--brand-primary)',
+                fontSize: 9.5,
+                color: 'var(--text-primary)',
+              }}>
+                <span style={{ color: 'var(--brand-primary)', fontWeight: 700, marginRight: 4 }}>
+                  LLM Guidance:
+                </span>
+                {llmResult.recommendation}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -652,6 +818,10 @@ export default function DispatchPanel({
         <button
           className={`btn btn-primary btn-full ${dispatchLoading ? 'btn-loading' : ''}`}
           onClick={() => {
+            if (!selectedDrone || drones.length === 0) {
+              toast('⚠️ Cannot dispatch: No active drones in fleet! Please add a drone first.', 'error');
+              return;
+            }
             if (isOverweight) {
               toast(`⚠️ Cannot dispatch: Payload exceeds ${selectedDrone.id} limit!`, 'error');
               return;
@@ -662,21 +832,23 @@ export default function DispatchPanel({
             }
             handleAssignAndDispatch();
           }}
-          disabled={dispatchLoading || isOverweight || isBatteryCritical}
+          disabled={dispatchLoading || !selectedDrone || drones.length === 0 || isOverweight || isBatteryCritical}
           style={{
             padding: '12px',
             fontSize: 13,
-            boxShadow: isOverweight || isBatteryCritical
+            boxShadow: (!selectedDrone || drones.length === 0 || isOverweight || isBatteryCritical)
               ? 'none'
               : '0 4px 20px rgba(0,212,255,0.4)',
-            opacity: (isOverweight || isBatteryCritical) ? 0.5 : 1,
-            cursor: (isOverweight || isBatteryCritical) ? 'not-allowed' : 'pointer',
+            opacity: (!selectedDrone || drones.length === 0 || isOverweight || isBatteryCritical) ? 0.5 : 1,
+            cursor: (!selectedDrone || drones.length === 0 || isOverweight || isBatteryCritical) ? 'not-allowed' : 'pointer',
           }}
           id="dispatch-mission-btn"
         >
           {!dispatchLoading && <Send size={15} />}
           {dispatchLoading
             ? 'Assigning & Launching…'
+            : !selectedDrone || drones.length === 0
+            ? '⚠️ No Active Drones'
             : isOverweight
             ? '⛔ Blocked: Cargo Overweight'
             : isBatteryCritical

@@ -1,10 +1,9 @@
-// AeroRoute — Emergency Controls Panel
 import { useState } from 'react';
-import { Zap, CloudLightning, Home, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Zap, CloudLightning, Home, RotateCcw, ShieldAlert, Trash2 } from 'lucide-react';
 import { evaluateSafety } from '../services/api';
 import { toast } from './Toast';
 
-export default function EmergencyControls({ onSimulateStorm, onForceRTB, onReset, selectedDrone }) {
+export default function EmergencyControls({ onSimulateStorm, onForceRTB, onReset, onClearFleet, selectedDrone }) {
   const [fsiLoading, setFsiLoading] = useState(false);
   const [fsiResult,  setFsiResult]  = useState(null);
   const [windInput,  setWindInput]  = useState(12);
@@ -139,15 +138,25 @@ export default function EmergencyControls({ onSimulateStorm, onForceRTB, onReset
             Force RTB
           </button>
         </div>
-        <button
-          className="btn btn-ghost btn-sm btn-full"
-          onClick={() => { onReset(); toast('Fleet simulation reset', 'info'); }}
-          style={{ marginTop: 8 }}
-          id="reset-fleet-btn"
-        >
-          <RotateCcw size={12} />
-          Reset Fleet
-        </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => { onReset(); toast('Fleet simulation reset to default', 'info'); }}
+            id="reset-fleet-btn"
+          >
+            <RotateCcw size={12} />
+            Reset Fleet
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => { onClearFleet?.(); toast('All drones decommissioned from fleet', 'info'); }}
+            style={{ color: 'var(--brand-danger)', borderColor: 'rgba(255,61,87,0.35)' }}
+            id="clear-fleet-btn"
+          >
+            <Trash2 size={12} />
+            Clear Fleet
+          </button>
+        </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 10, lineHeight: 1.5 }}>
           Storm Sim: raises wind gusts to 22–28 m/s across all drones, triggering FSI reroute/RTB recommendations.
         </div>

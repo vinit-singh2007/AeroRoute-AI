@@ -22,6 +22,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from ml_models import predict_battery_drain, train_battery_model
+from database import db_manager
+from llm_advisor import evaluate_pre_flight_with_llm
 from soft_computing import (
     GeneticRouteOptimizer,
     FuzzyFlightSafety,
@@ -37,15 +39,24 @@ from soft_computing import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Pre-train ML model on startup and start live telemetry broadcast."""
-    print("⚙️  AeroRoute backend starting — training battery model …")
+    """Connect to MongoDB, pre-train ML model on startup, and start live telemetry broadcast."""
+    print("[*] Connecting to MongoDB persistence layer...")
+    await db_manager.connect()
+    # Seed default fleet in DB if empty, or sync from DB
+    await db_manager.seed_default_drones(_simulator.DEFAULT_FLEET)
+    db_drones = await db_manager.get_all_drones()
+    if db_drones:
+        _simulator.sync_from_db(db_drones)
+
+    print("[*] AeroRoute backend starting - training battery model...")
     train_battery_model()
-    print("✅  Battery model ready.")
+    print("[+] Battery model ready.")
     telemetry_task = asyncio.create_task(telemetry_broadcast_loop())
-    print("🛰️  Telemetry broadcast loop active.")
+    print("[+] Telemetry broadcast loop active.")
     yield
     telemetry_task.cancel()
-    print("👋  AeroRoute backend shutting down.")
+    await db_manager.disconnect()
+    print("[-] AeroRoute backend shutting down.")
 
 
 # ===========================================================================
@@ -117,6 +128,19 @@ class DispatchMissionRequest(BaseModel):
     payload_weight_kg: float = 2.0
 
 
+class PreFlightCheckRequest(BaseModel):
+    drone_id: str
+    drone_model: Optional[str] = "Phantom-Mumbai X7"
+    current_battery_pct: float = Field(ge=0.0, le=100.0)
+    max_payload_kg: float = Field(ge=0.1, le=10.0)
+    payload_weight_kg: float = Field(ge=0.1, le=10.0)
+    flight_distance_km: float = Field(ge=0.1, le=100.0)
+    predicted_drain_pct: float = Field(default=25.0, ge=0.0, le=100.0)
+    remaining_battery_pct: float = Field(default=75.0, ge=0.0, le=100.0)
+    destination_name: Optional[str] = "Mumbai Delivery Point"
+    wind_gust_ms: Optional[float] = 5.0
+
+
 # ===========================================================================
 # REST ENDPOINTS
 # ===========================================================================
@@ -134,36 +158,106 @@ async def list_drones():
 
 @app.post("/api/drones", tags=["Fleet Management"])
 async def add_drone(req: CreateDroneRequest):
-    """Dynamically register and launch a new drone into the fleet."""
+    """Dynamically register and launch a new drone into the fleet and persist to MongoDB."""
     drone = _simulator.add_drone(req.model_dump())
-    return {"status": "SUCCESS", "message": f"Drone {req.id} registered", "drone": drone}
+    await db_manager.upsert_drone(drone)
+    await manager.broadcast({
+        "type": "telemetry",
+        "drones": _simulator.tick(),
+        "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
+        "server_time": time.time(),
+    })
+    return {"status": "SUCCESS", "message": f"Drone {req.id} registered & saved to MongoDB", "drone": drone}
 
 
 @app.delete("/api/drones/{drone_id}", tags=["Fleet Management"])
 async def delete_drone(drone_id: str):
-    """Remove a drone from the active fleet."""
+    """Remove a drone from active fleet and MongoDB."""
     _simulator.remove_drone(drone_id)
-    return {"status": "SUCCESS", "message": f"Drone {drone_id} removed"}
+    await db_manager.remove_drone(drone_id)
+    await manager.broadcast({
+        "type": "telemetry",
+        "drones": _simulator.tick(),
+        "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
+        "server_time": time.time(),
+    })
+    return {"status": "SUCCESS", "message": f"Drone {drone_id} removed from fleet & database"}
+
+
+@app.delete("/api/drones", tags=["Fleet Management"])
+async def delete_all_drones():
+    """Remove all drones from the active fleet and MongoDB."""
+    _simulator.clear_fleet()
+    await db_manager.clear_fleet()
+    await manager.broadcast({
+        "type": "telemetry",
+        "drones": [],
+        "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
+        "server_time": time.time(),
+    })
+    return {"status": "SUCCESS", "message": "All drones removed from fleet & database"}
+
+
+@app.post("/api/drones/reset", tags=["Fleet Management"])
+async def reset_fleet_endpoint():
+    """Reset fleet to default configuration and sync to MongoDB."""
+    _simulator._init_fleet()
+    await db_manager.clear_fleet()
+    await db_manager.seed_default_drones(_simulator.DEFAULT_FLEET)
+    await manager.broadcast({
+        "type": "telemetry",
+        "drones": _simulator.tick(),
+        "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
+        "server_time": time.time(),
+    })
+    return {"status": "SUCCESS", "message": "Fleet reset to default configuration & re-seeded in MongoDB"}
 
 
 @app.post("/api/dispatch-mission", tags=["Fleet Management"])
 async def dispatch_mission(req: DispatchMissionRequest):
-    """Assign an order destination and delivery agent to an active drone."""
-    drone = _simulator.assign_mission(req.drone_id, {
+    """Assign an order destination and delivery agent to an active drone, saving mission to MongoDB."""
+    mission_info = {
         "destination": {"lat": req.destination.lat, "lng": req.destination.lng, "name": req.destination_name},
         "order_id": req.order_id,
         "agent_name": req.agent_name,
         "payload_kg": req.payload_weight_kg
-    })
+    }
+    drone = _simulator.assign_mission(req.drone_id, mission_info)
     if not drone:
         raise HTTPException(status_code=404, detail=f"Drone {req.drone_id} not found in fleet")
-    return {"status": "SUCCESS", "message": f"Order {req.order_id} assigned to {req.drone_id}", "drone": drone}
+
+    # Persist mission into MongoDB
+    await db_manager.save_mission({
+        "order_id": req.order_id,
+        "drone_id": req.drone_id,
+        "drone_model": drone.get("model", "Drone"),
+        "agent_name": req.agent_name,
+        "destination_name": req.destination_name,
+        "dest_lat": req.destination.lat,
+        "dest_lng": req.destination.lng,
+        "payload_kg": req.payload_weight_kg,
+        "status": "EN_ROUTE",
+        "dispatched_at": drone.get("mission_start_time", time.strftime("%H:%M:%S")),
+        "start_battery_pct": round(drone.get("battery", 100.0), 1),
+    })
+
+    return {"status": "SUCCESS", "message": f"Order {req.order_id} assigned to {req.drone_id} and recorded in MongoDB", "drone": drone}
 
 
 @app.get("/api/missions", tags=["Fleet Management"])
 async def get_missions():
-    """Return all active en-route missions and delivered order history."""
-    return _simulator.get_missions_summary()
+    """Return all active en-route missions and delivered order history merged with MongoDB persistence."""
+    summary = _simulator.get_missions_summary()
+    db_missions = await db_manager.get_missions(limit=50)
+    if db_missions:
+        delivered_ids = {m["order_id"] for m in summary.get("delivered_missions", [])}
+        for dbm in db_missions:
+            if dbm.get("status") == "DELIVERED" and dbm.get("order_id") not in delivered_ids:
+                summary["delivered_missions"].append(dbm)
+                delivered_ids.add(dbm.get("order_id"))
+        summary["stats"]["delivered_count"] = len(summary["delivered_missions"])
+        summary["stats"]["total_dispatched"] = summary["stats"]["currently_active"] + summary["stats"]["delivered_count"]
+    return summary
 
 
 @app.get("/api/no-fly-zones", tags=["Map Data"])
@@ -176,7 +270,7 @@ async def get_no_fly_zones():
 async def optimize_route(req: OptimizeRouteRequest):
     """
     Execute the Genetic Algorithm to find optimal drone waypoints.
-    Returns waypoints, battery estimate, ETA, and GA fitness history.
+    Returns waypoints, battery estimate, ETA, and GA fitness history, and logs to MongoDB.
     """
     origin      = (req.origin.lat,      req.origin.lng)
     destination = (req.destination.lat, req.destination.lng)
@@ -195,7 +289,43 @@ async def optimize_route(req: OptimizeRouteRequest):
     loop   = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, optimizer.optimize)
 
+    # Persist optimized route to MongoDB
+    try:
+        await db_manager.save_route({
+            "origin": {"lat": req.origin.lat, "lng": req.origin.lng},
+            "destination": {"lat": req.destination.lat, "lng": req.destination.lng},
+            "intermediate_stops": [{"lat": s.lat, "lng": s.lng} for s in (req.intermediate_stops or [])],
+            "payload_weight_kg": req.payload_weight_kg,
+            "wind_speed_ms": req.wind_speed_ms,
+            "total_distance_km": result.get("total_distance_km"),
+            "estimated_battery_drain_pct": result.get("battery_drain_estimate_pct"),
+            "eta_minutes": result.get("eta_minutes"),
+            "waypoints_count": len(result.get("waypoints", [])),
+        })
+    except Exception as e:
+        print(f"[!] DB route logging error: {e}")
+
     return result
+
+
+@app.get("/api/database/status", tags=["Database"])
+async def get_database_status():
+    """Check MongoDB health, connection state, and collections document counts."""
+    return await db_manager.get_db_status()
+
+
+@app.get("/api/database/missions", tags=["Database"])
+async def get_database_missions(limit: int = 50):
+    """Retrieve persisted mission logs from MongoDB."""
+    missions = await db_manager.get_missions(limit=limit)
+    return {"missions": missions, "count": len(missions)}
+
+
+@app.get("/api/database/routes", tags=["Database"])
+async def get_database_routes(limit: int = 20):
+    """Retrieve persisted genetic algorithm routes from MongoDB."""
+    routes = await db_manager.get_recent_routes(limit=limit)
+    return {"routes": routes, "count": len(routes)}
 
 
 @app.post("/api/predict-battery", tags=["ML Prediction"])
@@ -218,6 +348,15 @@ async def fuzzy_safety(req: FuzzySafetyRequest):
         battery_level   = req.battery_level_pct,
         distance_to_hub = req.distance_to_hub_km,
     )
+
+
+@app.post("/api/ai/preflight-safety-check", tags=["AI Pre-Flight"])
+async def preflight_safety_check(req: PreFlightCheckRequest):
+    """
+    LLM-powered aerospace safety check for drone dispatch.
+    Evaluates cargo limits, battery depletion, wind vectors, and delivers an AI verdict.
+    """
+    return await evaluate_pre_flight_with_llm(req.model_dump())
 
 
 # ===========================================================================
@@ -325,6 +464,39 @@ class DroneSimulator:
                 "action_status": "SAFE",
             })
 
+    def sync_from_db(self, db_drones: List[dict]):
+        """Populate or update simulator active fleet from MongoDB documents."""
+        if not db_drones:
+            return
+        new_drones = []
+        for doc in db_drones:
+            lat = doc.get("lat") or self.HUB_LAT
+            lon = doc.get("lng") or self.HUB_LON
+            lat, lon = self.make_safe_coordinates(float(lat), float(lon), 0.5)
+            dest_lat, dest_lon = self.make_safe_coordinates(
+                self.HUB_LAT + random.uniform(-0.03, 0.03),
+                self.HUB_LON + random.uniform(-0.03, 0.03),
+                0.5
+            )
+            new_drones.append({
+                "id": doc["id"],
+                "model": doc.get("model", "Aero-X Standard"),
+                "max_payload_kg": float(doc.get("max_payload_kg", 3.0)),
+                "lat": float(lat),
+                "lon": float(lon),
+                "altitude": random.uniform(90, 140),
+                "battery": float(doc.get("battery_pct", 100.0)),
+                "speed": random.uniform(45, 60),
+                "status": doc.get("status", "DELIVERING"),
+                "heading": random.uniform(0, 360),
+                "dest_lat": dest_lat,
+                "dest_lon": dest_lon,
+                "wind_gust": random.uniform(2, 6),
+                "fsi": 90.0,
+                "action_status": "SAFE",
+            })
+        self.drones = new_drones
+
     def add_drone(self, drone_data: dict) -> dict:
         """Register a user-defined drone with custom specs, ensuring safe spawn coordinates."""
         lat = drone_data.get("lat") or (self.HUB_LAT + random.uniform(-0.012, 0.012))
@@ -360,6 +532,15 @@ class DroneSimulator:
     def remove_drone(self, drone_id: str):
         """Remove a drone from the simulation."""
         self.drones = [d for d in self.drones if d["id"] != drone_id]
+        self.active_missions = {
+            oid: m for oid, m in self.active_missions.items()
+            if m.get("drone_id") != drone_id
+        }
+
+    def clear_fleet(self):
+        """Remove all drones from the simulation."""
+        self.drones = []
+        self.active_missions = {}
 
     def get_drones_summary(self) -> List[dict]:
         return [
@@ -469,6 +650,10 @@ class DroneSimulator:
                     mission["final_battery_pct"] = round(drone["battery"], 1)
                     mission["distance_km"] = round(haversine(self.HUB_LAT, self.HUB_LON, drone["dest_lat"], drone["dest_lon"]), 2)
                     self.delivered_missions.insert(0, mission)
+                    try:
+                        asyncio.create_task(db_manager.mark_mission_delivered(mission["order_id"], mission))
+                    except Exception:
+                        pass
                 drone["status"] = "RETURNING" if drone["battery"] < 35 else "DELIVERED"
             else:
                 step_lat = (dlat / dist) * step
@@ -625,6 +810,23 @@ async def ws_telemetry(websocket: WebSocket):
                     d["status"]   = "RTB"
             elif data == "RESET":
                 _simulator._init_fleet()
+                await db_manager.clear_fleet()
+                await db_manager.seed_default_drones(_simulator.DEFAULT_FLEET)
+                await manager.broadcast({
+                    "type": "telemetry",
+                    "drones": _simulator.tick(),
+                    "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
+                    "server_time": time.time(),
+                })
+            elif data == "CLEAR_FLEET":
+                _simulator.clear_fleet()
+                await db_manager.clear_fleet()
+                await manager.broadcast({
+                    "type": "telemetry",
+                    "drones": [],
+                    "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
+                    "server_time": time.time(),
+                })
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception:

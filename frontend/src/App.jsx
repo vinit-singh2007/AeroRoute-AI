@@ -1,5 +1,5 @@
 // AeroRoute — Main Application Dashboard (Mumbai Autonomous Fleet)
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Satellite,
   Clock,
@@ -11,7 +11,8 @@ import {
   Radio,
   Home,
   Navigation,
-  X
+  X,
+  Database
 } from 'lucide-react';
 import FleetMap          from './components/FleetMap';
 import DispatchPanel     from './components/DispatchPanel';
@@ -24,13 +25,16 @@ import PredictionsPanel  from './components/PredictionsPanel';
 import VerticalNavRail   from './components/VerticalNavRail';
 import { ToastContainer } from './components/Toast';
 import { useTelemetry }  from './hooks/useTelemetry';
+import { getDatabaseStatus } from './services/api';
 
 
 
-function NavBar({ connected, lastUpdate, dronesCount, currentView, onViewChange }) {
+function NavBar({ connected, lastUpdate, dronesCount, dbStatus, currentView, onViewChange }) {
   const time = lastUpdate
     ? lastUpdate.toLocaleTimeString('en-IN', { hour12: false })
     : '--:--:--';
+
+  const isDbOnline = dbStatus?.status === 'CONNECTED';
 
   return (
     <nav className="top-nav">
@@ -45,6 +49,14 @@ function NavBar({ connected, lastUpdate, dronesCount, currentView, onViewChange 
       {/* Clean Navbar: Logo on left, Live Status Bar on right */}
 
       <div className="nav-status-bar">
+        <div
+          className="nav-status-item"
+          title={isDbOnline ? `MongoDB Connected: ${dbStatus.database} (v${dbStatus.version}) • Drones: ${dbStatus.counts?.drones || 0}, Missions: ${dbStatus.counts?.missions || 0}` : 'Connecting to MongoDB...'}
+          style={{ cursor: 'pointer' }}
+        >
+          <Database size={12} style={{ color: isDbOnline ? 'var(--brand-success, #00ffaa)' : 'var(--brand-warning, #ffaa00)' }} />
+          <span>{isDbOnline ? 'MongoDB: Online' : 'MongoDB: Syncing'}</span>
+        </div>
         <div className="nav-status-item">
           <Satellite size={12} />
           <span>{dronesCount} Drones Active</span>
@@ -77,6 +89,7 @@ export default function App() {
     simulateStorm,
     forceRTB,
     resetFleet,
+    clearFleet,
   } = useTelemetry();
 
   const [currentView,        setCurrentView]        = useState('landing');
@@ -86,10 +99,32 @@ export default function App() {
   const [activeNav,          setActiveNav]          = useState('dispatch');
   const [isDrawerOpen,       setIsDrawerOpen]       = useState(true);
   const [isNavCollapsed,     setIsNavCollapsed]     = useState(false);
+  const [dbStatus,           setDbStatus]           = useState(null);
 
-  // Auto-select first drone once telemetry stream populates
-  useMemo(() => {
-    if (!selectedDroneId && drones.length > 0) {
+  // Poll database status periodically
+  useEffect(() => {
+    let isMounted = true;
+    const fetchStatus = async () => {
+      try {
+        const res = await getDatabaseStatus();
+        if (isMounted) setDbStatus(res);
+      } catch {
+        if (isMounted) setDbStatus({ status: 'OFFLINE' });
+      }
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 8000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Auto-select first drone once telemetry stream populates, or clear if fleet is empty
+  useEffect(() => {
+    if (drones.length === 0) {
+      if (selectedDroneId !== null) setSelectedDroneId(null);
+    } else if (!selectedDroneId || !drones.some(d => d.id === selectedDroneId)) {
       setSelectedDroneId(drones[0].id);
     }
   }, [drones, selectedDroneId]);
@@ -107,6 +142,7 @@ export default function App() {
           connected={connected}
           lastUpdate={lastUpdate}
           dronesCount={drones.length}
+          dbStatus={dbStatus}
           currentView={currentView}
           onViewChange={setCurrentView}
         />
@@ -238,6 +274,7 @@ export default function App() {
                       onSimulateStorm={simulateStorm}
                       onForceRTB={forceRTB}
                       onReset={resetFleet}
+                      onClearFleet={clearFleet}
                       selectedDrone={drones.find(d => d.id === selectedDroneId)}
                     />
                   )}

@@ -93,7 +93,8 @@ export function useTelemetry() {
 
   const simulateStorm = useCallback(() => sendCommand('SIMULATE_STORM'), [sendCommand]);
   const forceRTB      = useCallback(() => sendCommand('FORCE_RTB'),      [sendCommand]);
-  const resetFleet    = useCallback(() => sendCommand('RESET'),           [sendCommand]);
+  const resetFleet    = useCallback(() => sendCommand('RESET'),          [sendCommand]);
+  const clearFleet    = useCallback(() => sendCommand('CLEAR_FLEET'),    [sendCommand]);
 
-  return { drones, hub, connected, lastUpdate, simulateStorm, forceRTB, resetFleet };
+  return { drones, hub, connected, lastUpdate, simulateStorm, forceRTB, resetFleet, clearFleet };
 }

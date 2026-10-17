@@ -1,8 +1,10 @@
 // AeroRoute — Fleet Overview Sidebar
 import { useMemo } from 'react';
-import { Zap, Wind, Navigation, AlertTriangle } from 'lucide-react';
+import { Zap, Wind, Navigation, AlertTriangle, Trash2, RotateCcw } from 'lucide-react';
+import { deleteDrone, deleteAllDrones, resetFleet } from '../services/api';
+import { toast } from './Toast';
 
-function DroneCard({ drone, isSelected, onClick }) {
+function DroneCard({ drone, isSelected, onClick, onDelete }) {
   const batteryLevel =
     drone.battery_pct > 50 ? 'high' :
     drone.battery_pct > 25 ? 'medium' : 'low';
@@ -22,12 +24,33 @@ function DroneCard({ drone, isSelected, onClick }) {
       className={`drone-item ${isSelected ? 'selected' : ''}`}
       onClick={onClick}
       id={`fleet-card-${drone.id}`}
+      style={{ position: 'relative' }}
     >
       <div className="drone-avatar">🚁</div>
-      <div className="drone-info">
+      <div className="drone-info" style={{ flex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="drone-id">{drone.id}</div>
-          <span className={`status-chip ${drone.status}`}>{drone.status}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className={`status-chip ${drone.status}`}>{drone.status}</span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              title={`Decommission drone ${drone.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.(drone.id);
+              }}
+              style={{
+                padding: '2px 6px',
+                height: 'auto',
+                color: 'var(--brand-danger)',
+                borderColor: 'rgba(255,61,87,0.25)',
+              }}
+              id={`delete-drone-${drone.id}`}
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
         </div>
         <div className="drone-model">{drone.model}</div>
 
@@ -85,6 +108,34 @@ export default function FleetOverview({ drones, selectedDroneId, onDroneSelect }
     return { delivering, returning, rtb, avgBattery, alerts };
   }, [drones]);
 
+  const handleDeleteDrone = async (droneId) => {
+    try {
+      await deleteDrone(droneId);
+      toast(`Drone ${droneId} decommissioned from fleet`, 'info');
+    } catch (err) {
+      toast(`Failed to remove drone: ${err.message}`, 'error');
+    }
+  };
+
+  const handleDeleteAllDrones = async () => {
+    if (!drones || drones.length === 0) return;
+    try {
+      await deleteAllDrones();
+      toast('All drones decommissioned from fleet', 'info');
+    } catch (err) {
+      toast(`Failed to clear fleet: ${err.message}`, 'error');
+    }
+  };
+
+  const handleResetFleet = async () => {
+    try {
+      await resetFleet();
+      toast('Default fleet restored', 'success');
+    } catch (err) {
+      toast(`Failed to reset fleet: ${err.message}`, 'error');
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Fleet Stats */}
@@ -141,7 +192,32 @@ export default function FleetOverview({ drones, selectedDroneId, onDroneSelect }
 
       {/* Drone List */}
       <div className="panel-section">
-        <div className="panel-title">Active Drones ({drones.length})</div>
+        <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Active Drones ({drones.length})</span>
+          {drones.length > 0 ? (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '2px 8px', fontSize: 10, borderColor: 'rgba(255,61,87,0.35)', color: 'var(--brand-danger)' }}
+              onClick={handleDeleteAllDrones}
+              title="Decommission all drones from fleet"
+              id="fleet-overview-delete-all-btn"
+            >
+              <Trash2 size={10} /> Delete All
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '2px 8px', fontSize: 10, borderColor: 'rgba(0,212,255,0.4)', color: 'var(--brand-primary)' }}
+              onClick={handleResetFleet}
+              title="Restore standard default fleet"
+              id="fleet-overview-restore-btn"
+            >
+              <RotateCcw size={10} /> Restore Fleet
+            </button>
+          )}
+        </div>
         <div className="drone-list">
           {drones.map(drone => (
             <DroneCard
@@ -149,11 +225,34 @@ export default function FleetOverview({ drones, selectedDroneId, onDroneSelect }
               drone={drone}
               isSelected={drone.id === selectedDroneId}
               onClick={() => onDroneSelect(drone.id)}
+              onDelete={handleDeleteDrone}
             />
           ))}
           {drones.length === 0 && (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24, fontSize: 13 }}>
-              No drones connected
+            <div style={{
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+              padding: '28px 16px',
+              fontSize: 12,
+              background: 'rgba(8,15,31,0.5)',
+              borderRadius: 8,
+              border: '1px dashed var(--border-subtle)',
+            }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>🚁</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                No Drones in Fleet
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
+                All drones decommissioned. Register a new drone in Mission Dispatch or restore the default fleet.
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleResetFleet}
+                style={{ fontSize: 11 }}
+              >
+                <RotateCcw size={11} style={{ marginRight: 4 }} /> Restore Default Fleet
+              </button>
             </div>
           )}
         </div>
@@ -161,3 +260,4 @@ export default function FleetOverview({ drones, selectedDroneId, onDroneSelect }
     </div>
   );
 }
+
