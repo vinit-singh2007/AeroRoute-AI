@@ -680,7 +680,7 @@ export default function DispatchPanel({
               gap: 3,
             }}>
               <Bot size={10} />
-              {llmLoading ? 'Analyzing...' : (llmResult?.source === 'gemini-llm' ? '✨ Gemini 2.0 Flash' : llmResult?.source === 'groq-llm' ? '⚡ Groq Llama-3.3' : '✨ Gemini Safety AI')}
+              {llmLoading ? 'Analyzing...' : (llmResult?.source === 'gemini-llm' ? '✨ Gemini 3.8 Flash' : llmResult?.source === 'groq-llm' ? '⚡ Groq Llama-3.3' : '✨ Gemini Safety AI')}
             </span>
           </div>
 
