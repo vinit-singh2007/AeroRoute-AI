@@ -540,13 +540,13 @@ export default function CesiumDroneTracker({
               background: tilesetStatus === 'active'
                 ? 'rgba(6, 255, 165, 0.12)'
                 : tilesetStatus === 'missing-key'
-                ? 'rgba(251, 191, 36, 0.15)'
-                : 'rgba(255, 61, 87, 0.15)',
+                  ? 'rgba(251, 191, 36, 0.15)'
+                  : 'rgba(255, 61, 87, 0.15)',
               border: tilesetStatus === 'active'
                 ? '1px solid rgba(6, 255, 165, 0.4)'
                 : tilesetStatus === 'missing-key'
-                ? '1px solid rgba(251, 191, 36, 0.4)'
-                : '1px solid rgba(255, 61, 87, 0.4)',
+                  ? '1px solid rgba(251, 191, 36, 0.4)'
+                  : '1px solid rgba(255, 61, 87, 0.4)',
               cursor: 'pointer',
               fontSize: 10,
               fontWeight: 800,
@@ -559,8 +559,8 @@ export default function CesiumDroneTracker({
               {tilesetStatus === 'active'
                 ? 'GOOGLE 3D TILES ACTIVE'
                 : tilesetStatus === 'missing-key'
-                ? '3D TILES: API KEY NEEDED'
-                : '3D TILES: ERROR'}
+                  ? '3D TILES: API KEY NEEDED'
+                  : '3D TILES: ERROR'}
             </span>
           </div>
 

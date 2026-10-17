@@ -65,7 +65,7 @@ export default function VerticalNavRail({
           justifyContent: isCollapsed ? 'center' : 'flex-start',
           cursor: 'pointer',
         }}
-        title="MMR Central Logistics Hub (Midway)"
+          title="MMR Central Logistics Hub (Midway)"
         >
           {/* Avatar icon */}
           <div style={{
@@ -141,7 +141,6 @@ export default function VerticalNavRail({
               label: 'Dispatch Delivery',
               tooltip: 'Dispatch Delivery Mission Center',
               icon: <Send size={16} />,
-              badge: 'PAGE',
               isActive: currentView === 'dispatch',
               onClick: () => onNavigateView('dispatch'),
             },
