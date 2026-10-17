@@ -1,9 +1,9 @@
 """
-AeroRoute — LLM Pre-Flight Safety Advisor
-=========================================
-Uses Groq Cloud (Llama 3.3 70B / Llama 3.1 8B) for real-time aerospace
-dispatch validation, risk quantification, and flight safety analysis.
-Includes graceful fallback if no API key is provided or offline.
+AeroRoute — LLM Pre-Flight Safety Advisor (Google Gemini & Groq)
+================================================================
+Evaluates pre-flight telemetry, cargo parameters, battery depletion,
+and coastal weather constraints using Google Gemini (or Groq Cloud)
+with structured JSON response and robust offline fallback.
 """
 
 import json
@@ -13,6 +13,9 @@ from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
 load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
@@ -101,35 +104,23 @@ def _get_fallback_verdict(data: dict, note: str = "") -> dict:
         "recommendation": recommendation,
         "model_used": "AeroRoute Aerospace Safety Engine",
         "source": "aeroroute-engine",
-        "note": note or ("Add GROQ_API_KEY in backend/.env for live Llama-3.3 inference" if not GROQ_API_KEY else ""),
+        "note": note or ("Add GEMINI_API_KEY in backend/.env for live Google Gemini AI" if not (GEMINI_API_KEY or GROQ_API_KEY) else ""),
     }
 
 
-async def evaluate_pre_flight_with_llm(data: dict) -> dict:
-    """
-    Evaluate pre-flight parameters using Groq Cloud LLM (Llama 3.3).
-    Falls back gracefully if Groq is unavailable or key is unset.
-    """
-    api_key = os.getenv("GROQ_API_KEY", "").strip() or GROQ_API_KEY
-    if not api_key:
-        return _get_fallback_verdict(data, note="Add GROQ_API_KEY in backend/.env for live Groq Llama-3.3")
+def _build_prompt(data: dict) -> str:
+    payload = float(data.get("payload_weight_kg", 2.0))
+    max_payload = float(data.get("max_payload_kg", 3.5))
+    current_battery = float(data.get("current_battery_pct", 100.0))
+    predicted_drain = float(data.get("predicted_drain_pct", 25.0))
+    remaining_battery = max(0.0, current_battery - predicted_drain)
+    distance_km = float(data.get("flight_distance_km", 10.0))
+    wind_gust = float(data.get("wind_gust_ms", 5.0))
+    drone_id = data.get("drone_id", "BOM-001")
+    drone_model = data.get("drone_model", "Phantom-Mumbai X7")
+    dest_name = data.get("destination_name", "Mumbai Destination")
 
-    try:
-        from groq import AsyncGroq
-        client = AsyncGroq(api_key=api_key, timeout=4.0)
-
-        payload = float(data.get("payload_weight_kg", 2.0))
-        max_payload = float(data.get("max_payload_kg", 3.5))
-        current_battery = float(data.get("current_battery_pct", 100.0))
-        predicted_drain = float(data.get("predicted_drain_pct", 25.0))
-        remaining_battery = max(0.0, current_battery - predicted_drain)
-        distance_km = float(data.get("flight_distance_km", 10.0))
-        wind_gust = float(data.get("wind_gust_ms", 5.0))
-        drone_id = data.get("drone_id", "BOM-001")
-        drone_model = data.get("drone_model", "Phantom-Mumbai X7")
-        dest_name = data.get("destination_name", "Mumbai Destination")
-
-        prompt = f"""
+    return f"""
 You are AeroRoute's Autonomous Flight Safety & Mission Dispatch AI Advisor for Mumbai Airspace.
 Analyze the following drone flight parameters and provide a real-time safety evaluation.
 
@@ -149,42 +140,109 @@ RULES:
 3. If remaining battery is 20-35% or wind > 14 m/s -> verdict MUST be "CAUTION".
 4. Otherwise -> verdict is "SAFE".
 
-Respond ONLY with a valid JSON object with EXACTLY this structure (no markdown fences, no extra text):
+Respond ONLY with a valid JSON object matching EXACTLY this structure (no markdown fences, no code blocks):
 {{
   "verdict": "SAFE" | "CAUTION" | "BLOCKED",
   "status_label": "Short label with emoji, e.g. '✅ DISPATCH APPROVED — SAFE FLIGHT' or '⛔ BLOCKED: CARGO OVERWEIGHT'",
   "analysis": "1-2 concise, professional sentences analyzing why this flight is safe or hazardous",
-  "risk_score": integer between 0 and 100,
+  "risk_score": 15,
   "key_risks": ["Risk point 1", "Risk point 2"],
   "recommendation": "1 sentence practical action for the delivery agent/dispatcher"
 }}
 """
 
-        response = await client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "You are a professional aerospace safety AI engine. Respond ONLY in strict valid JSON format."},
-                {"role": "user", "content": prompt}
-            ],
-            model=GROQ_MODEL,
-            temperature=0.2,
-            max_tokens=350,
-            response_format={"type": "json_object"},
-        )
 
-        content = response.choices[0].message.content.strip()
-        parsed = json.loads(content)
+async def evaluate_with_gemini(api_key: str, data: dict) -> dict:
+    """Evaluate using official Google GenAI SDK (Gemini 2.0 / 1.5)."""
+    from google import genai
+    from google.genai import types
 
-        return {
-            "verdict": parsed.get("verdict", "SAFE"),
-            "status_label": parsed.get("status_label", "✅ DISPATCH APPROVED — SAFE FLIGHT"),
-            "analysis": parsed.get("analysis", "AI validated nominal flight parameters."),
-            "risk_score": int(parsed.get("risk_score", 15)),
-            "key_risks": parsed.get("key_risks", []),
-            "recommendation": parsed.get("recommendation", "Proceed with dispatch."),
-            "model_used": f"Groq ({GROQ_MODEL})",
-            "source": "groq-llm",
-        }
+    client = genai.Client(api_key=api_key)
+    prompt = _build_prompt(data)
 
-    except Exception as e:
-        print(f"[!] Groq LLM evaluation error: {e}. Falling back to internal engine.")
-        return _get_fallback_verdict(data, note=f"Groq: {str(e)[:60]}")
+    config = types.GenerateContentConfig(
+        temperature=0.2,
+        response_mime_type="application/json",
+        system_instruction="You are a professional aerospace safety AI engine. Respond ONLY in valid JSON format."
+    )
+
+    response = await client.aio.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config=config,
+    )
+
+    raw_text = response.text.strip()
+    # Strip any markdown code wrapper if present
+    if raw_text.startswith("```"):
+        raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+        raw_text = re.sub(r"\s*```$", "", raw_text)
+
+    parsed = json.loads(raw_text)
+
+    return {
+        "verdict": parsed.get("verdict", "SAFE"),
+        "status_label": parsed.get("status_label", "✅ DISPATCH APPROVED — SAFE FLIGHT"),
+        "analysis": parsed.get("analysis", "AI validated nominal flight parameters."),
+        "risk_score": int(parsed.get("risk_score", 15)),
+        "key_risks": parsed.get("key_risks", []),
+        "recommendation": parsed.get("recommendation", "Proceed with dispatch."),
+        "model_used": f"Google Gemini ({GEMINI_MODEL})",
+        "source": "gemini-llm",
+    }
+
+
+async def evaluate_with_groq(api_key: str, data: dict) -> dict:
+    """Evaluate using Groq Cloud SDK."""
+    from groq import AsyncGroq
+    client = AsyncGroq(api_key=api_key, timeout=4.0)
+    prompt = _build_prompt(data)
+
+    response = await client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": "You are a professional aerospace safety AI engine. Respond ONLY in strict valid JSON format."},
+            {"role": "user", "content": prompt}
+        ],
+        model=GROQ_MODEL,
+        temperature=0.2,
+        max_tokens=350,
+        response_format={"type": "json_object"},
+    )
+
+    content = response.choices[0].message.content.strip()
+    parsed = json.loads(content)
+
+    return {
+        "verdict": parsed.get("verdict", "SAFE"),
+        "status_label": parsed.get("status_label", "✅ DISPATCH APPROVED — SAFE FLIGHT"),
+        "analysis": parsed.get("analysis", "AI validated nominal flight parameters."),
+        "risk_score": int(parsed.get("risk_score", 15)),
+        "key_risks": parsed.get("key_risks", []),
+        "recommendation": parsed.get("recommendation", "Proceed with dispatch."),
+        "model_used": f"Groq ({GROQ_MODEL})",
+        "source": "groq-llm",
+    }
+
+
+async def evaluate_pre_flight_with_llm(data: dict) -> dict:
+    """
+    Evaluate pre-flight parameters using:
+    1. Google Gemini (primary if GEMINI_API_KEY provided)
+    2. Groq Cloud (secondary if GROQ_API_KEY provided)
+    3. AeroRoute Internal Aerospace Safety Engine fallback
+    """
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip() or GEMINI_API_KEY
+    if gemini_key:
+        try:
+            return await evaluate_with_gemini(gemini_key, data)
+        except Exception as e:
+            print(f"[!] Gemini LLM error: {e}. Trying fallback.")
+
+    groq_key = os.getenv("GROQ_API_KEY", "").strip() or GROQ_API_KEY
+    if groq_key:
+        try:
+            return await evaluate_with_groq(groq_key, data)
+        except Exception as e:
+            print(f"[!] Groq LLM error: {e}. Trying fallback.")
+
+    return _get_fallback_verdict(data)
