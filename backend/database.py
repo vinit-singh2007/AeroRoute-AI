@@ -96,8 +96,9 @@ class DatabaseManager:
                 "max_payload_kg": float(drone_data.get("max_payload_kg", 3.0)),
                 "battery_pct": float(drone_data.get("battery", drone_data.get("battery_pct", 100.0))),
                 "status": drone_data.get("status", "IDLE"),
-                "lat": float(drone_data.get("lat", 19.0760)),
-                "lng": float(drone_data.get("lon", drone_data.get("lng", 72.8777))),
+                "secret_code": str(drone_data.get("secret_code") or "AERO-ADMIN"),
+                "lat": float(drone_data.get("lat", 19.1940)),
+                "lng": float(drone_data.get("lon", drone_data.get("lng", 72.8550))),
                 "updated_at": time.time(),
             }
             await self.db.drones.update_one(
@@ -109,6 +110,16 @@ class DatabaseManager:
         except Exception as e:
             print(f"[!] DB upsert_drone error: {e}")
             return False
+
+    async def get_drone(self, drone_id: str) -> Optional[dict]:
+        """Retrieve a drone by ID including secret_code for authorization verification."""
+        if not self.connected or self.db is None:
+            return None
+        try:
+            return await self.db.drones.find_one({"id": drone_id}, {"_id": 0})
+        except Exception as e:
+            print(f"[!] DB get_drone error: {e}")
+            return None
 
     async def remove_drone(self, drone_id: str) -> bool:
         """Delete a drone by id from the database."""

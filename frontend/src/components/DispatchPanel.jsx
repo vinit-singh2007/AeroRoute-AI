@@ -16,26 +16,55 @@ import {
   CheckCircle2,
   AlertTriangle,
   Bot,
-  RefreshCw
+  RefreshCw,
+  Lock
 } from 'lucide-react';
-import { addDrone, deleteDrone, deleteAllDrones, dispatchMission, optimizeRoute, predictBattery, checkPreFlightSafety } from '../services/api';
+import { addDrone, deleteDrone, dispatchMission, optimizeRoute, predictBattery, checkPreFlightSafety } from '../services/api';
 import { toast } from './Toast';
 
 const MUMBAI_HUB = {
-  id: 'hub-bkc',
-  name: 'Mumbai Central Hub – BKC Logistics Base',
-  lat: 19.0657,
-  lng: 72.8687,
+  id: 'hub-midway',
+  name: 'Mumbai Central Hub – MMR Midpoint Logistics Base (Kandivali/Goregaon)',
+  lat: 19.1940,
+  lng: 72.8550,
 };
 
 const MUMBAI_DESTINATIONS = [
-  { id: 'MUM-1', name: 'Nariman Point / Marine Drive Hub', lat: 18.9256, lng: 72.8242 },
-  { id: 'MUM-2', name: 'Andheri East Commercial Drop',    lat: 19.1136, lng: 72.8697 },
-  { id: 'MUM-3', name: 'Powai Hiranandani Tech Delivery', lat: 19.1176, lng: 72.9060 },
-  { id: 'MUM-4', name: 'Dadar Central Crossing Depot',     lat: 19.0178, lng: 72.8478 },
-  { id: 'MUM-5', name: 'Navi Mumbai Vashi Terminal',      lat: 19.0770, lng: 72.9986 },
-  { id: 'MUM-6', name: 'Borivali West Cargo Center',      lat: 19.2307, lng: 72.8567 },
-  { id: 'CUSTOM', name: '📍 Custom Drop (Map Click / GPS Lat-Lng)', lat: null, lng: null },
+  // ── North MMR Corridor (Virar, Nalasopara, Vasai, Mira-Bhayandar) ──
+  { id: 'MUM-VIRAR',   name: 'Virar West Coastal Logistics Terminal',      lat: 19.4564, lng: 72.8081 },
+  { id: 'MUM-NALA',    name: 'Nalasopara West Distribution Depot',         lat: 19.4182, lng: 72.8198 },
+  { id: 'MUM-VASAI',   name: 'Vasai East Industrial Cargo Hub',           lat: 19.3812, lng: 72.8311 },
+  { id: 'MUM-BHAY',    name: 'Bhayandar East Freight Depot',              lat: 19.2990, lng: 72.8550 },
+  { id: 'MUM-MIRA',    name: 'Mira Road Express Commercial Drop',         lat: 19.2813, lng: 72.8561 },
+
+  // ── Western Suburbs Corridor ──
+  { id: 'MUM-BORIVALI',name: 'Borivali West Cargo Center',                 lat: 19.2307, lng: 72.8567 },
+  { id: 'MUM-KANDIV',  name: 'Kandivali East Industrial Depot',           lat: 19.2062, lng: 72.8732 },
+  { id: 'MUM-MALAD',   name: 'Malad West Mindspace Commercial Drop',      lat: 19.1860, lng: 72.8485 },
+  { id: 'MUM-GOREG',   name: 'Goregaon East NESCO Exhibition Center',     lat: 19.1551, lng: 72.8526 },
+  { id: 'MUM-ANDH-E',  name: 'Andheri East SEEPZ Cargo Depot',            lat: 19.1136, lng: 72.8697 },
+  { id: 'MUM-ANDH-W',  name: 'Andheri West Lokhandwala Hub',              lat: 19.1362, lng: 72.8272 },
+  { id: 'MUM-JUHU',    name: 'Juhu Tara Coastal Drop Point',              lat: 19.0988, lng: 72.8264 },
+  { id: 'MUM-BANDRA',  name: 'Bandra West Pali Hill Delivery Hub',        lat: 19.0607, lng: 72.8277 },
+
+  // ── Central Suburbs & Thane Corridor ──
+  { id: 'MUM-THANE',   name: 'Thane West Wagle Estate Logistics Terminal', lat: 19.1944, lng: 72.9567 },
+  { id: 'MUM-POWAI',   name: 'Powai Hiranandani Tech Delivery',           lat: 19.1176, lng: 72.9060 },
+  { id: 'MUM-GHATK',   name: 'Ghatkopar East Metro Cargo Depot',          lat: 19.0856, lng: 72.9082 },
+  { id: 'MUM-KURLA',   name: 'Kurla West Phoenix Marketcity Depot',       lat: 19.0860, lng: 72.8890 },
+  { id: 'MUM-DADAR',   name: 'Dadar Central Crossing Depot',              lat: 19.0178, lng: 72.8478 },
+  { id: 'MUM-LPAREL',  name: 'Lower Parel High Street Commercial Hub',    lat: 18.9950, lng: 72.8267 },
+
+  // ── South Mumbai (Town) Corridor ──
+  { id: 'MUM-NARIMAN', name: 'Nariman Point / Marine Drive Hub',          lat: 18.9256, lng: 72.8242 },
+  { id: 'MUM-COLABA',  name: 'Colaba Causeway Commercial Depot',          lat: 18.9150, lng: 72.8260 },
+
+  // ── Navi Mumbai Corridor ──
+  { id: 'MUM-VASHI',   name: 'Navi Mumbai Vashi Terminal',               lat: 19.0770, lng: 72.9986 },
+  { id: 'MUM-BELAPUR', name: 'CBD Belapur & Kharghar Tech Node',          lat: 19.0269, lng: 73.0400 },
+
+  // ── Custom Coordinates ──
+  { id: 'CUSTOM',      name: '📍 Custom Drop (Map Click / GPS Lat-Lng)', lat: null,    lng: null },
 ];
 
 export default function DispatchPanel({
@@ -45,6 +74,7 @@ export default function DispatchPanel({
   onRefreshFleet,
   onNavigateToPredictions,
   onNavigateToMissions,
+  onOpenFullScreenDispatch,
 }) {
   // Dispatcher & Order state
   const [dispatcherName,   setDispatcherName]   = useState('Agent Rohit Verma');
@@ -53,20 +83,26 @@ export default function DispatchPanel({
 
   // Drone & Target state
   const [selectedDroneId,  setSelectedDroneId]  = useState('');
-  const [destinationId,    setDestinationId]    = useState('MUM-1');
+  const [destinationId,    setDestinationId]    = useState('MUM-VIRAR');
   const [customLat,        setCustomLat]        = useState('');
   const [customLng,        setCustomLng]        = useState('');
   const [payloadWeight,    setPayloadWeight]    = useState(1.8);
   const [dispatchLoading,  setDispatchLoading]  = useState(false);
   const [activeMission,    setActiveMission]    = useState(null);
 
-  // New Drone Form Modal
-  const [showAddDrone,     setShowAddDrone]     = useState(false);
-  const [newDroneId,       setNewDroneId]       = useState('');
-  const [newDroneModel,    setNewDroneModel]    = useState('OctoCopter HeavyLifter');
-  const [newDronePayload,  setNewDronePayload]  = useState(4.5);
-  const [newDroneBattery,  setNewDroneBattery]  = useState(100);
-  const [addLoading,       setAddLoading]       = useState(false);
+  // New Drone Form Modal State
+  const [showAddDrone,        setShowAddDrone]        = useState(false);
+  const [newDroneId,          setNewDroneId]          = useState('');
+  const [newDroneModel,       setNewDroneModel]       = useState('OctoCopter HeavyLifter');
+  const [newDronePayload,     setNewDronePayload]     = useState(4.5);
+  const [newDroneBattery,     setNewDroneBattery]     = useState(100);
+  const [newDroneSecretCode,  setNewDroneSecretCode]  = useState('');
+  const [addLoading,          setAddLoading]          = useState(false);
+
+  // Individual Decommission Authorization Modal State
+  const [droneToDelete,       setDroneToDelete]       = useState(null);
+  const [deleteSecretCode,    setDeleteSecretCode]    = useState('');
+  const [deleteLoading,       setDeleteLoading]       = useState(false);
 
   // LLM Pre-Flight Safety Advisor State
   const [llmResult,        setLlmResult]        = useState(null);
@@ -206,11 +242,15 @@ export default function DispatchPanel({
     `AI validated: Safe payload ratio (${((payloadWeight/maxPayload)*100).toFixed(0)}%) & healthy ${remainingBatteryOnArrival}% battery reserve upon arrival.`
   );
 
-  // 1. Add Drone to Fleet
+  // 1. Add Drone to Fleet with Mandatory Secret Code (Stored in MongoDB)
   const handleRegisterDrone = async (e) => {
     e.preventDefault();
     if (!newDroneId.trim()) {
       toast('Please enter a unique Drone ID (e.g. BOM-AIR-05)', 'warning');
+      return;
+    }
+    if (!newDroneSecretCode.trim()) {
+      toast('Please enter a Secret Code/PIN (required to delete later)', 'warning');
       return;
     }
     setAddLoading(true);
@@ -220,10 +260,12 @@ export default function DispatchPanel({
         model: newDroneModel.trim(),
         max_payload_kg: parseFloat(newDronePayload),
         battery_pct: parseFloat(newDroneBattery),
+        secret_code: newDroneSecretCode.trim(),
       });
-      toast(`Drone ${newDroneId.toUpperCase()} registered to Mumbai Fleet!`, 'success');
+      toast(`Drone ${newDroneId.toUpperCase()} registered & secured with Secret Code!`, 'success');
       setSelectedDroneId(newDroneId.trim().toUpperCase());
       setNewDroneId('');
+      setNewDroneSecretCode('');
       setShowAddDrone(false);
       onRefreshFleet?.();
     } catch (err) {
@@ -233,39 +275,40 @@ export default function DispatchPanel({
     }
   };
 
-  // 2. Delete Drone from Fleet (Allows deleting any drone including the last drone)
-  const handleDeleteDrone = async (droneId) => {
+  // 2. Open Decommission Modal for single drone
+  const handleOpenDecommission = (droneId) => {
     const idToDelete = droneId || selectedDroneId;
     if (!idToDelete) {
       toast('No drone selected to delete', 'warning');
       return;
     }
-    try {
-      await deleteDrone(idToDelete);
-      toast(`Drone ${idToDelete} decommissioned from fleet`, 'info');
-      if (selectedDroneId === idToDelete) {
-        const remaining = drones.filter(d => d.id !== idToDelete);
-        setSelectedDroneId(remaining.length > 0 ? remaining[0].id : '');
-      }
-      onRefreshFleet?.();
-    } catch (err) {
-      toast(`Failed to remove drone: ${err.message}`, 'error');
-    }
+    setDroneToDelete(idToDelete);
+    setDeleteSecretCode('');
   };
 
-  // 2b. Delete All Drones from Fleet
-  const handleDeleteAllDrones = async () => {
-    if (!drones || drones.length === 0) {
-      toast('Fleet is already empty', 'info');
+  // 2b. Execute Single Drone Decommission with Secret Code Verification
+  const handleConfirmDecommission = async (e) => {
+    e.preventDefault();
+    if (!droneToDelete) return;
+    if (!deleteSecretCode.trim()) {
+      toast('Please enter the secret authorization code to delete this drone', 'warning');
       return;
     }
+    setDeleteLoading(true);
     try {
-      await deleteAllDrones();
-      setSelectedDroneId('');
-      toast('All drones decommissioned from fleet', 'info');
+      await deleteDrone(droneToDelete, deleteSecretCode.trim());
+      toast(`Drone ${droneToDelete} authorized and decommissioned from fleet!`, 'success');
+      if (selectedDroneId === droneToDelete) {
+        const remaining = drones.filter(d => d.id !== droneToDelete);
+        setSelectedDroneId(remaining.length > 0 ? remaining[0].id : '');
+      }
+      setDroneToDelete(null);
+      setDeleteSecretCode('');
       onRefreshFleet?.();
     } catch (err) {
-      toast(`Failed to clear fleet: ${err.message}`, 'error');
+      toast(`Decommission failed: ${err.message}`, 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -324,6 +367,32 @@ export default function DispatchPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
+
+      {/* ── EXPAND TO FULL-PAGE BANNER ── */}
+      {onOpenFullScreenDispatch && (
+        <div style={{
+          padding: '8px 12px',
+          background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.16) 0%, rgba(6, 255, 165, 0.12) 100%)',
+          borderBottom: '1px solid rgba(0, 212, 255, 0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          flexShrink: 0,
+        }}>
+          <div style={{ fontSize: 10, color: 'var(--brand-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span>🚀</span> <span>Full-Page View Available</span>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenFullScreenDispatch}
+            className="btn btn-sm btn-primary"
+            style={{ fontSize: 9.5, padding: '3px 8px', fontWeight: 800, cursor: 'pointer' }}
+          >
+            Open Big Page ↗
+          </button>
+        </div>
+      )}
 
       {/* ── SECTION 1: Delivery Order & Dispatcher Info ── */}
       <div className="panel-section">
@@ -399,18 +468,6 @@ export default function DispatchPanel({
             <Navigation size={12} /> Assign Drone ({drones.length} active)
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
-            {drones.length > 0 && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                style={{ padding: '2px 8px', fontSize: 10, borderColor: 'rgba(255,61,87,0.35)', color: 'var(--brand-danger)' }}
-                onClick={handleDeleteAllDrones}
-                title="Decommission all drones from fleet"
-                id="delete-all-drones-btn"
-              >
-                <Trash2 size={10} /> Delete All
-              </button>
-            )}
             <button
               type="button"
               className="btn btn-ghost btn-sm"
@@ -495,6 +552,19 @@ export default function DispatchPanel({
                 />
               </div>
             </div>
+            <div style={{ marginBottom: 10 }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Lock size={10} color="var(--brand-primary)" /> Secret Authorization Code (Required to Decommission)
+              </label>
+              <input
+                type="password"
+                placeholder="e.g. AERO-SEC-99"
+                className="form-input"
+                value={newDroneSecretCode}
+                onChange={e => setNewDroneSecretCode(e.target.value)}
+                required
+              />
+            </div>
             <button
               type="submit"
               disabled={addLoading}
@@ -524,8 +594,8 @@ export default function DispatchPanel({
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              title={`Decommission selected drone (${selectedDroneId})`}
-              onClick={() => handleDeleteDrone(selectedDroneId)}
+              title={`Decommission selected drone (${selectedDroneId}) — Requires Secret Code`}
+              onClick={() => handleOpenDecommission(selectedDroneId)}
               style={{ padding: '0 10px', color: 'var(--brand-danger)', borderColor: 'rgba(255,61,87,0.3)' }}
               id="delete-drone-btn"
             >
@@ -907,6 +977,93 @@ export default function DispatchPanel({
           </button>
         </div>
       </div>
+
+      {/* ── AUTHORIZE SINGLE DRONE DECOMMISSION MODAL ── */}
+      {droneToDelete && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+        }}>
+          <form
+            onSubmit={handleConfirmDecommission}
+            style={{
+              width: 360,
+              padding: 20,
+              background: 'rgba(8, 16, 33, 0.98)',
+              border: '1px solid rgba(255, 61, 87, 0.45)',
+              borderRadius: 12,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.85)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 15 }}>🔐</span>
+                <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--brand-danger)', textTransform: 'uppercase' }}>
+                  Authorize Decommission
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDroneToDelete(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: '1.4' }}>
+              Decommissioning airframe <strong style={{ color: '#fff' }}>{droneToDelete}</strong>. Enter the secret authorization code to confirm removal:
+            </p>
+
+            <div style={{ marginBottom: 14 }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Lock size={10} color="var(--brand-primary)" /> Secret Authorization Code
+              </label>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="Enter secret code"
+                value={deleteSecretCode}
+                onChange={e => setDeleteSecretCode(e.target.value)}
+                autoFocus
+                required
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setDroneToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-sm"
+                style={{
+                  background: 'var(--brand-danger)',
+                  color: '#fff',
+                  border: 'none',
+                  fontWeight: 800,
+                  cursor: deleteLoading ? 'not-allowed' : 'pointer',
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                }}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Verifying...' : 'Confirm'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
     </div>
   );

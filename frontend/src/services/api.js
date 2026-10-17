@@ -55,9 +55,10 @@ export async function addDrone(drone) {
   });
 }
 
-// DELETE /api/drones/:id
-export async function deleteDrone(droneId) {
-  return apiFetch(`/api/drones/${encodeURIComponent(droneId)}`, {
+// DELETE /api/drones/:id with mandatory secret_code authorization
+export async function deleteDrone(droneId, secretCode) {
+  const query = secretCode ? `?secret_code=${encodeURIComponent(secretCode)}` : '';
+  return apiFetch(`/api/drones/${encodeURIComponent(droneId)}${query}`, {
     method: 'DELETE',
   });
 }

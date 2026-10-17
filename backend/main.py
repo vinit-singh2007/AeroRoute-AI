@@ -17,7 +17,7 @@ from typing import List, Optional
 
 import numpy as np
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -91,23 +91,23 @@ class LatLon(BaseModel):
 class OptimizeRouteRequest(BaseModel):
     origin:               LatLon
     destination:          LatLon
-    payload_weight_kg:    float = Field(default=1.0, ge=0.1, le=5.0)
+    payload_weight_kg:    float = Field(default=1.0, ge=0.1, le=10.0)
     wind_speed_ms:        float = Field(default=5.0,  ge=0.0, le=30.0)
-    max_battery_drain_pct: float = Field(default=80.0, ge=10.0, le=100.0)
+    max_battery_drain_pct: float = Field(default=85.0, ge=10.0, le=100.0)
     intermediate_stops:   Optional[List[LatLon]] = []
 
 
 class BatteryPredictRequest(BaseModel):
-    payload_weight_kg:    float = Field(ge=0.1, le=5.0)
+    payload_weight_kg:    float = Field(ge=0.1, le=10.0)
     elevation_change_m:   float = Field(default=50.0)
-    distance_km:          float = Field(ge=0.1, le=50.0)
+    distance_km:          float = Field(ge=0.1, le=100.0)
     wind_speed_ms:        float = Field(default=5.0, ge=0.0, le=30.0)
 
 
 class FuzzySafetyRequest(BaseModel):
     wind_gust_ms:         float = Field(ge=0.0,  le=30.0)
     battery_level_pct:    float = Field(ge=0.0,  le=100.0)
-    distance_to_hub_km:   float = Field(ge=0.0,  le=20.0)
+    distance_to_hub_km:   float = Field(ge=0.0,  le=100.0)
 
 
 class CreateDroneRequest(BaseModel):
@@ -115,8 +115,13 @@ class CreateDroneRequest(BaseModel):
     model: str = "Aero-X Heavy"
     max_payload_kg: float = 3.5
     battery_pct: float = 100.0
+    secret_code: str = Field(default="AERO-ADMIN", min_length=3, description="Secret authorization code for decommissioning")
     lat: Optional[float] = None
     lng: Optional[float] = None
+
+
+class DeleteDroneRequest(BaseModel):
+    secret_code: str
 
 
 class DispatchMissionRequest(BaseModel):
@@ -158,7 +163,7 @@ async def list_drones():
 
 @app.post("/api/drones", tags=["Fleet Management"])
 async def add_drone(req: CreateDroneRequest):
-    """Dynamically register and launch a new drone into the fleet and persist to MongoDB."""
+    """Dynamically register and launch a new drone with secret code into the fleet and persist to MongoDB."""
     drone = _simulator.add_drone(req.model_dump())
     await db_manager.upsert_drone(drone)
     await manager.broadcast({
@@ -171,8 +176,34 @@ async def add_drone(req: CreateDroneRequest):
 
 
 @app.delete("/api/drones/{drone_id}", tags=["Fleet Management"])
-async def delete_drone(drone_id: str):
-    """Remove a drone from active fleet and MongoDB."""
+async def delete_drone(drone_id: str, secret_code: Optional[str] = Query(None), body: Optional[DeleteDroneRequest] = None):
+    """Remove a single drone from active fleet and MongoDB with mandatory secret authorization code verification."""
+    code = (secret_code or (body.secret_code if body else None) or "").strip()
+    if not code:
+        raise HTTPException(
+            status_code=400,
+            detail="Secret authorization code is required to decommission drone."
+        )
+
+    # 1. Check in active simulator drone
+    active_drone = _simulator.get_drone(drone_id)
+    stored_code = None
+    if active_drone:
+        stored_code = active_drone.get("secret_code")
+
+    # 2. Check in MongoDB if missing or not in simulator
+    if not stored_code and db_manager.connected:
+        db_drone = await db_manager.get_drone(drone_id)
+        if db_drone:
+            stored_code = db_drone.get("secret_code")
+
+    expected_code = (stored_code or "AERO-ADMIN").strip()
+    if code != expected_code:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Authorization Failed: Invalid Secret Code for drone {drone_id}."
+        )
+
     _simulator.remove_drone(drone_id)
     await db_manager.remove_drone(drone_id)
     await manager.broadcast({
@@ -181,21 +212,16 @@ async def delete_drone(drone_id: str):
         "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
         "server_time": time.time(),
     })
-    return {"status": "SUCCESS", "message": f"Drone {drone_id} removed from fleet & database"}
+    return {"status": "SUCCESS", "message": f"Drone {drone_id} authorized & successfully decommissioned"}
 
 
 @app.delete("/api/drones", tags=["Fleet Management"])
 async def delete_all_drones():
-    """Remove all drones from the active fleet and MongoDB."""
-    _simulator.clear_fleet()
-    await db_manager.clear_fleet()
-    await manager.broadcast({
-        "type": "telemetry",
-        "drones": [],
-        "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
-        "server_time": time.time(),
-    })
-    return {"status": "SUCCESS", "message": "All drones removed from fleet & database"}
+    """Bulk deletion is disabled per user security policy."""
+    raise HTTPException(
+        status_code=405,
+        detail="Bulk deletion is disabled. Drones must be decommissioned individually using their secret code."
+    )
 
 
 @app.post("/api/drones/reset", tags=["Fleet Management"])
@@ -367,13 +393,13 @@ class DroneSimulator:
     """Simulates a drone flying between two points with live telemetry (Mumbai)."""
 
     DEFAULT_FLEET = [
-        {"id": "BOM-001", "model": "Phantom-Mumbai X7",   "max_payload_kg": 3.5},
-        {"id": "BOM-002", "model": "Falcon-Marine Lite",   "max_payload_kg": 2.5},
-        {"id": "BOM-003", "model": "Eagle-Harbor Pro",     "max_payload_kg": 5.0},
+        {"id": "BOM-001", "model": "Phantom-Mumbai X7",   "max_payload_kg": 3.5, "secret_code": "AERO-001"},
+        {"id": "BOM-002", "model": "Falcon-Marine Lite",   "max_payload_kg": 2.5, "secret_code": "AERO-002"},
+        {"id": "BOM-003", "model": "Eagle-Harbor Pro",     "max_payload_kg": 5.0, "secret_code": "AERO-003"},
     ]
 
-    # BKC (Bandra Kurla Complex) Central Logistics Hub, Mumbai
-    HUB_LAT, HUB_LON = 19.0657, 72.8687
+    # Midway MMR Central Logistics Hub (Centered between Churchgate ~18.93 and Virar ~19.45)
+    HUB_LAT, HUB_LON = 19.1940, 72.8550
 
     @staticmethod
     def make_safe_coordinates(lat: float, lon: float, safety_margin_km: float = 0.5) -> Tuple[float, float]:
@@ -450,6 +476,7 @@ class DroneSimulator:
             dest_lat, dest_lon = self.make_safe_coordinates(dest_lat, dest_lon, 0.5)
             self.drones.append({
                 **d,
+                "secret_code":   d.get("secret_code", "AERO-ADMIN"),
                 "lat":           lat,
                 "lon":           lon,
                 "altitude":      random.uniform(80, 150),
@@ -482,6 +509,7 @@ class DroneSimulator:
                 "id": doc["id"],
                 "model": doc.get("model", "Aero-X Standard"),
                 "max_payload_kg": float(doc.get("max_payload_kg", 3.0)),
+                "secret_code": doc.get("secret_code", "AERO-ADMIN"),
                 "lat": float(lat),
                 "lon": float(lon),
                 "altitude": random.uniform(90, 140),
@@ -511,6 +539,7 @@ class DroneSimulator:
             "id":             drone_data["id"],
             "model":          drone_data.get("model", "Aero-X Standard"),
             "max_payload_kg": float(drone_data.get("max_payload_kg", 3.0)),
+            "secret_code":    str(drone_data.get("secret_code") or "AERO-ADMIN"),
             "lat":            float(lat),
             "lon":            float(lon),
             "altitude":       random.uniform(90, 140),
@@ -529,6 +558,13 @@ class DroneSimulator:
         self.drones.append(new_drone)
         return new_drone
 
+    def get_drone(self, drone_id: str) -> Optional[dict]:
+        """Fetch an active drone by ID from simulator."""
+        for d in self.drones:
+            if d["id"] == drone_id:
+                return d
+        return None
+
     def remove_drone(self, drone_id: str):
         """Remove a drone from the simulation."""
         self.drones = [d for d in self.drones if d["id"] != drone_id]
@@ -545,13 +581,25 @@ class DroneSimulator:
     def get_drones_summary(self) -> List[dict]:
         return [
             {
-                "id":             d["id"],
-                "model":          d["model"],
-                "max_payload_kg": d.get("max_payload_kg", 3.0),
-                "battery_pct":    round(d["battery"], 1),
-                "status":         d.get("status", "IDLE"),
-                "lat":            round(d["lat"], 5),
-                "lng":            round(d["lon"], 5),
+                "id":               d["id"],
+                "model":            d.get("model", "Aero-X Standard"),
+                "max_payload_kg":   d.get("max_payload_kg", 3.0),
+                "battery_pct":      round(d.get("battery", 100.0), 1),
+                "status":           d.get("status", "IDLE"),
+                "lat":              round(d.get("lat", self.HUB_LAT), 6),
+                "lng":              round(d.get("lon", self.HUB_LON), 6),
+                "altitude_m":       round(d.get("altitude", 120.0), 1),
+                "speed_kmh":        round(d.get("speed", 45.0), 1),
+                "wind_gust_ms":     round(d.get("wind_gust", 4.0), 1),
+                "heading_deg":      round(d.get("heading", 0.0), 1),
+                "fsi":              round(d.get("fsi", 85.0), 2),
+                "action_status":    d.get("action_status", "SAFE"),
+                "order_id":         d.get("order_id", "STANDBY"),
+                "destination_name": d.get("destination_name", "Mumbai Airspace"),
+                "agent_name":       d.get("agent_name", "Logistics Officer"),
+                "payload_kg":       d.get("payload_kg", 0.0),
+                "dest_lat":         d.get("dest_lat"),
+                "dest_lng":         d.get("dest_lon"),
             }
             for d in self.drones
         ]
@@ -795,6 +843,16 @@ async def telemetry_broadcast_loop():
 @app.websocket("/ws/telemetry")
 async def ws_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
+    try:
+        # Send initial snapshot immediately upon connect
+        await websocket.send_json({
+            "type": "telemetry",
+            "drones": _simulator.tick(),
+            "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
+            "server_time": time.time(),
+        })
+    except Exception:
+        pass
     try:
         while True:
             # Keep connection alive indefinitely; listen for client commands & heartbeats

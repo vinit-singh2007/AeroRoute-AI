@@ -1,19 +1,13 @@
 // AeroRoute — Vertical Navigation Sidebar (Inspired by Modern Glassmorphic Rail)
 import { useState } from 'react';
 import {
+  Radio,
   Send,
-  Layers,
-  Cpu,
-  Shield,
-  Home,
-  Sparkles,
+  Navigation,
+  Package,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  Radio,
-  Sliders,
-  Settings,
-  Package
+  ChevronDown
 } from 'lucide-react';
 
 export default function VerticalNavRail({
@@ -29,30 +23,36 @@ export default function VerticalNavRail({
 }) {
   return (
     <aside style={{
-      width: isCollapsed ? 68 : 210,
-      minWidth: isCollapsed ? 68 : 210,
-      maxWidth: isCollapsed ? 68 : 210,
-      height: '100%',
-      background: 'rgba(8, 16, 33, 0.92)',
+      width: isCollapsed ? 68 : 220,
+      minWidth: isCollapsed ? 68 : 220,
+      maxWidth: isCollapsed ? 68 : 220,
+      height: '100vh',
+      minHeight: '100vh',
+      maxHeight: '100vh',
+      alignSelf: 'stretch',
+      background: 'rgba(8, 16, 33, 0.94)',
       backdropFilter: 'blur(24px)',
       WebkitBackdropFilter: 'blur(24px)',
-      borderRight: '1px solid rgba(0, 212, 255, 0.12)',
+      borderRight: '1px solid rgba(0, 212, 255, 0.15)',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
-      padding: isCollapsed ? '16px 8px' : '16px 12px',
+      padding: isCollapsed ? '16px 8px' : '18px 12px',
       boxSizing: 'border-box',
       transition: 'width 220ms cubic-bezier(0.4, 0, 0.2, 1), min-width 220ms, max-width 220ms',
       zIndex: 20,
       userSelect: 'none',
       position: 'relative',
       overflowX: 'hidden',
+      overflowY: 'auto',
+      flexShrink: 0,
+      borderRadius: 0,
     }}>
 
       {/* ── TOP SECTION: Hub Profile Card & Menu ── */}
       <div>
 
-        {/* Profile / Hub Card (Styled like reference image) */}
+        {/* Profile / Hub Card */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -65,7 +65,7 @@ export default function VerticalNavRail({
           justifyContent: isCollapsed ? 'center' : 'flex-start',
           cursor: 'pointer',
         }}
-        title="BKC Central Logistics Hub"
+        title="MMR Central Logistics Hub (Midway)"
         >
           {/* Avatar icon */}
           <div style={{
@@ -94,7 +94,7 @@ export default function VerticalNavRail({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
               }}>
-                BKC Logistics Hub
+                MMR Logistics Hub (Midway)
               </div>
               <div style={{ fontSize: 9.5, color: 'var(--brand-accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--brand-accent)', display: 'inline-block' }} />
@@ -118,261 +118,154 @@ export default function VerticalNavRail({
           padding: isCollapsed ? '0 0 8px 0' : '0 8px 8px 8px',
           textAlign: isCollapsed ? 'center' : 'left',
         }}>
-          {isCollapsed ? '•••' : 'MENU'}
+          {isCollapsed ? '•••' : 'NAVIGATION'}
         </div>
 
-        {/* ── VERTICAL NAV ITEMS ── */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {/* ── VERTICAL NAV ITEMS (4 ITEMS) ── */}
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {[
             {
-              id: 'dispatch',
-              label: 'Dispatch Mission',
-              icon: <Send size={16} />,
+              id: 'overview',
+              label: 'Overview',
+              tooltip: 'Overview — Map & Live Telemetry',
+              icon: <Radio size={16} />,
               badge: null,
+              isActive: currentView === 'dashboard',
+              onClick: () => {
+                onNavigateView('dashboard');
+                onSelectItem('overview');
+              },
+            },
+            {
+              id: 'dispatch',
+              label: 'Dispatch Delivery',
+              tooltip: 'Dispatch Delivery Mission Center',
+              icon: <Send size={16} />,
+              badge: 'PAGE',
+              isActive: currentView === 'dispatch',
+              onClick: () => onNavigateView('dispatch'),
+            },
+            {
+              id: 'live-drones',
+              label: 'Live Drones',
+              tooltip: 'Live Assigned & Delivering Drones Fleet',
+              icon: <Navigation size={16} />,
+              badge: `${dronesCount}`,
+              isActive: currentView === 'live-drones',
+              onClick: () => onNavigateView('live-drones'),
             },
             {
               id: 'missions',
-              label: 'Live Deliveries',
+              label: 'Delivery Logs',
+              tooltip: 'Missions & Delivery Records Hub',
               icon: <Package size={16} />,
-              badge: 'LIVE',
-              isView: true,
-            },
-            {
-              id: 'fleet',
-              label: 'Fleet Management',
-              icon: <Layers size={16} />,
-              badge: dronesCount,
-            },
-            {
-              id: 'safety',
-              label: 'Flight Safety',
-              icon: <Shield size={16} />,
               badge: null,
+              isActive: currentView === 'missions',
+              onClick: () => onNavigateView('missions'),
             },
-          ].map(item => {
-            const isActive = item.isView
-              ? currentView === 'missions'
-              : (currentView === 'dashboard' && activeItem === item.id && isDrawerOpen);
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  if (item.isView) {
-                    onNavigateView('missions');
-                  } else {
-                    if (currentView !== 'dashboard') {
-                      onNavigateView('dashboard');
-                    }
-                    onSelectItem(item.id);
-                  }
-                }}
-                id={`nav-item-${item.id}`}
-                title={item.label}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  width: '100%',
-                  padding: isCollapsed ? '10px 0' : '10px 12px',
-                  justifyContent: isCollapsed ? 'center' : 'flex-start',
-                  borderRadius: 10,
-                  border: isActive ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid transparent',
-                  background: isActive
-                    ? 'linear-gradient(90deg, rgba(0, 212, 255, 0.16) 0%, rgba(0, 212, 255, 0.04) 100%)'
-                    : 'transparent',
-                  color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  transition: 'all 160ms ease',
-                  position: 'relative',
-                  outline: 'none',
-                }}
-                onMouseEnter={e => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                    e.currentTarget.style.color = '#fff';
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }
-                }}
-              >
-                {/* Active Indicator Glow Pill on Far Left */}
-                {isActive && (
-                  <span style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: '20%',
-                    bottom: '20%',
-                    width: 3.5,
-                    borderRadius: '0 4px 4px 0',
-                    background: 'var(--brand-primary)',
-                    boxShadow: '0 0 10px var(--brand-primary)',
-                  }} />
-                )}
-
+          ].map(item => (
+            <button
+              key={item.id}
+              onClick={item.onClick}
+              id={`nav-item-${item.id}`}
+              title={item.tooltip || item.label}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                width: '100%',
+                padding: isCollapsed ? '10px 0' : '10px 12px',
+                justifyContent: isCollapsed ? 'center' : 'flex-start',
+                borderRadius: 10,
+                border: item.isActive ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid transparent',
+                background: item.isActive
+                  ? 'linear-gradient(90deg, rgba(0, 212, 255, 0.16) 0%, rgba(0, 212, 255, 0.04) 100%)'
+                  : 'transparent',
+                color: item.isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 160ms ease',
+                position: 'relative',
+                outline: 'none',
+              }}
+              onMouseEnter={e => {
+                if (!item.isActive) {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.color = '#fff';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!item.isActive) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }
+              }}
+            >
+              {/* Active Indicator Glow Pill on Far Left */}
+              {item.isActive && (
                 <span style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: isActive ? 'var(--brand-primary)' : 'inherit',
-                  filter: isActive ? 'drop-shadow(0 0 6px rgba(0,212,255,0.6))' : 'none',
+                  position: 'absolute',
+                  left: 0,
+                  top: '20%',
+                  bottom: '20%',
+                  width: 3.5,
+                  borderRadius: '0 4px 4px 0',
+                  background: 'var(--brand-primary)',
+                  boxShadow: '0 0 10px var(--brand-primary)',
+                }} />
+              )}
+
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: item.isActive ? 'var(--brand-primary)' : 'inherit',
+                filter: item.isActive ? 'drop-shadow(0 0 6px rgba(0,212,255,0.6))' : 'none',
+              }}>
+                {item.icon}
+              </span>
+
+              {!isCollapsed && (
+                <span style={{
+                  fontSize: 12,
+                  fontWeight: item.isActive ? 700 : 500,
+                  letterSpacing: '0.2px',
+                  flex: 1,
+                  textAlign: 'left',
+                  whiteSpace: 'nowrap',
                 }}>
-                  {item.icon}
+                  {item.label}
                 </span>
+              )}
 
-                {!isCollapsed && (
-                  <span style={{
-                    fontSize: 12,
-                    fontWeight: isActive ? 700 : 500,
-                    letterSpacing: '0.2px',
-                    flex: 1,
-                    textAlign: 'left',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {item.label}
-                  </span>
-                )}
+              {/* Badge if present */}
+              {!isCollapsed && item.badge && (
+                <span style={{
+                  fontSize: 9.5,
+                  fontWeight: 800,
+                  padding: '2px 6px',
+                  borderRadius: 10,
+                  background: item.isActive ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.08)',
+                  color: item.isActive ? 'var(--brand-primary)' : 'var(--text-muted)',
+                }}>
+                  {item.badge}
+                </span>
+              )}
 
-                {/* Badge if present */}
-                {!isCollapsed && item.badge && (
-                  <span style={{
-                    fontSize: 9.5,
-                    fontWeight: 800,
-                    padding: '2px 6px',
-                    borderRadius: 10,
-                    background: isActive ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.08)',
-                    color: isActive ? 'var(--brand-primary)' : 'var(--text-muted)',
-                  }}>
-                    {item.badge}
-                  </span>
-                )}
-
-                {/* Collapsed dot for badge */}
-                {isCollapsed && item.badge && (
-                  <span style={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 8,
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: 'var(--brand-primary)',
-                    boxShadow: '0 0 6px var(--brand-primary)',
-                  }} />
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* ── DIVIDER ── */}
-        <div style={{
-          height: 1,
-          background: 'rgba(255, 255, 255, 0.08)',
-          margin: '16px 4px',
-        }} />
-
-        {/* ── SECONDARY CATEGORY: VIEWS ── */}
-        <div style={{
-          fontSize: 9.5,
-          fontWeight: 800,
-          letterSpacing: '1.5px',
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          padding: isCollapsed ? '0 0 8px 0' : '0 8px 8px 8px',
-          textAlign: isCollapsed ? 'center' : 'left',
-        }}>
-          {isCollapsed ? '•••' : 'VIEWS'}
-        </div>
-
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {/* Landing / Overview */}
-          <button
-            onClick={() => onNavigateView('landing')}
-            id="nav-item-landing"
-            title="Overview Landing Page"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              width: '100%',
-              padding: isCollapsed ? '10px 0' : '10px 12px',
-              justifyContent: isCollapsed ? 'center' : 'flex-start',
-              borderRadius: 10,
-              border: currentView === 'landing' ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid transparent',
-              background: currentView === 'landing' ? 'rgba(0, 212, 255, 0.12)' : 'transparent',
-              color: currentView === 'landing' ? 'var(--brand-primary)' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 160ms ease',
-            }}
-          >
-            <Home size={16} />
-            {!isCollapsed && (
-              <span style={{ fontSize: 12, fontWeight: currentView === 'landing' ? 700 : 500 }}>
-                Overview Page
-              </span>
-            )}
-          </button>
-
-          {/* Fleet Map Ops */}
-          <button
-            onClick={() => onNavigateView('dashboard')}
-            id="nav-item-dashboard"
-            title="Live Fleet Map Operations"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              width: '100%',
-              padding: isCollapsed ? '10px 0' : '10px 12px',
-              justifyContent: isCollapsed ? 'center' : 'flex-start',
-              borderRadius: 10,
-              border: currentView === 'dashboard' ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid transparent',
-              background: currentView === 'dashboard' ? 'rgba(0, 212, 255, 0.12)' : 'transparent',
-              color: currentView === 'dashboard' ? 'var(--brand-primary)' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 160ms ease',
-            }}
-          >
-            <Radio size={16} />
-            {!isCollapsed && (
-              <span style={{ fontSize: 12, fontWeight: currentView === 'dashboard' ? 700 : 500 }}>
-                Fleet Map Ops
-              </span>
-            )}
-          </button>
-
-          {/* Deliveries & Missions Hub */}
-          <button
-            onClick={() => onNavigateView('missions')}
-            id="nav-item-missions-hub"
-            title="Missions & Delivery Logs Hub"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              width: '100%',
-              padding: isCollapsed ? '10px 0' : '10px 12px',
-              justifyContent: isCollapsed ? 'center' : 'flex-start',
-              borderRadius: 10,
-              border: currentView === 'missions' ? '1px solid rgba(6, 255, 165, 0.4)' : '1px solid transparent',
-              background: currentView === 'missions' ? 'rgba(6, 255, 165, 0.12)' : 'transparent',
-              color: currentView === 'missions' ? 'var(--brand-accent)' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 160ms ease',
-            }}
-          >
-            <Package size={16} />
-            {!isCollapsed && (
-              <span style={{ fontSize: 12, fontWeight: currentView === 'missions' ? 700 : 500 }}>
-                Deliveries Hub
-              </span>
-            )}
-          </button>
+              {/* Collapsed dot for badge */}
+              {isCollapsed && item.badge && (
+                <span style={{
+                  position: 'absolute',
+                  top: 6,
+                  right: 8,
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: 'var(--brand-primary)',
+                  boxShadow: '0 0 6px var(--brand-primary)',
+                }} />
+              )}
+            </button>
+          ))}
         </nav>
       </div>
 

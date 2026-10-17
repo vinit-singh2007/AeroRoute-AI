@@ -65,14 +65,19 @@
   padding: 0;
 }
 
-html { scroll-behavior: smooth; }
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  scroll-behavior: smooth;
+}
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg-void);
   color: var(--text-primary);
-  min-height: 100vh;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -139,24 +144,21 @@ body {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }
 
 .main-content {
   display: flex;
   flex-direction: row;
-  height: calc(100vh - 60px);
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
+  width: 100%;
   overflow: hidden;
   position: relative;
-  width: 100%;
-}
-@media (max-width: 1024px) {
-  .main-content {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 60vh auto;
-    height: auto;
-    overflow: auto;
-  }
+  flex: 1;
 }
 
 /* ============================================================
@@ -259,11 +261,22 @@ body {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
   gap: 0;
 }
 .sidebar.right-panel {
   border-right: none;
   border-left: 1px solid var(--border-subtle);
+  width: 350px;
+  min-width: 350px;
+  max-width: 350px;
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-section {
@@ -652,7 +665,24 @@ body {
   overflow: hidden;
   flex: 1;
   min-width: 0;
-  height: 100%;
+  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  width: 100%;
+}
+
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  background: #020811 !important;
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+/* Tactical Dark Map Filter: Deep navy dark cyberpunk palette */
+.tactical-dark-map .leaflet-tile-pane {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
 }
 
 .map-overlay-top {

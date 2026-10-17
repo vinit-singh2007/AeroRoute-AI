@@ -72,7 +72,7 @@ function BatteryBar({ pct }) {
           <Battery size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />Battery
         </span>
         <span style={{ fontSize: 13, fontWeight: 800, color, fontFamily: 'JetBrains Mono, monospace' }}>
-          {pct?.toFixed(1)}%
+          {Number(pct || 0).toFixed(1)}%
         </span>
       </div>
       <div className="battery-bar-wrap">
@@ -84,11 +84,12 @@ function BatteryBar({ pct }) {
 
 // FSI Ring indicator
 function FSIRing({ score }) {
-  const color = score >= 65 ? '#06ffa5' : score >= 35 ? '#fbbf24' : '#ff3d57';
-  const status = score >= 65 ? 'SAFE' : score >= 35 ? 'CAUTION' : 'DANGER';
+  const safeScore = Number(score || 0);
+  const color = safeScore >= 65 ? '#06ffa5' : safeScore >= 35 ? '#fbbf24' : '#ff3d57';
+  const status = safeScore >= 65 ? 'SAFE' : safeScore >= 35 ? 'CAUTION' : 'DANGER';
   const radius = 45;
   const circumference = 2 * Math.PI * radius;
-  const pct = score / 100;
+  const pct = safeScore / 100;
   const offset = circumference * (1 - pct);
 
   return (
@@ -109,7 +110,7 @@ function FSIRing({ score }) {
             filter={`drop-shadow(0 0 6px ${color}80)`}
           />
           <text x="55" y="50" textAnchor="middle" fill={color} fontSize="18" fontWeight="900" fontFamily="JetBrains Mono, monospace">
-            {score.toFixed(0)}
+            {safeScore.toFixed(0)}
           </text>
           <text x="55" y="64" textAnchor="middle" fill="rgba(120,160,200,0.7)" fontSize="9" fontFamily="Inter, sans-serif">
             / 100
@@ -262,10 +263,10 @@ export default function TelemetryHUD({ drones, selectedDroneId, onDroneSelect })
         <div className="panel-title"><Gauge size={12} /> Live Position</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           {[
-            { label: 'Latitude',  value: selected.lat?.toFixed(5),         unit: '°N' },
-            { label: 'Longitude', value: selected.lng?.toFixed(5),         unit: '°E' },
-            { label: 'Heading',   value: selected.heading_deg?.toFixed(1), unit: '°' },
-            { label: 'Wind Gust', value: selected.wind_gust_ms?.toFixed(1),unit: 'm/s' },
+            { label: 'Latitude',  value: selected.lat != null ? Number(selected.lat).toFixed(5) : '—', unit: '°N' },
+            { label: 'Longitude', value: selected.lng != null ? Number(selected.lng).toFixed(5) : '—', unit: '°E' },
+            { label: 'Heading',   value: selected.heading_deg != null ? Number(selected.heading_deg).toFixed(1) : '0.0', unit: '°' },
+            { label: 'Wind Gust', value: selected.wind_gust_ms != null ? Number(selected.wind_gust_ms).toFixed(1) : '0.0', unit: 'm/s' },
           ].map(item => (
             <div key={item.label} className="metric-card">
               <div className="metric-label">{item.label}</div>

@@ -1,5 +1,5 @@
 // AeroRoute — Interactive Fleet Map (Mumbai Logistics Network)
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -83,9 +83,11 @@ export default function FleetMap({
   onMapClick,
   customDestination,
   sidebarState,
+  mapTheme = 'satellite',
 }) {
   const mapRef            = useRef(null);
   const mapInstance       = useRef(null);
+  const tileLayerRef      = useRef(null);
   const droneMarkers      = useRef({});
   const routeLayers       = useRef([]);
   const hubMarker         = useRef(null);
@@ -96,8 +98,10 @@ export default function FleetMap({
   useEffect(() => {
     if (!mapRef.current) return;
     const observer = new ResizeObserver(() => {
-      if (mapInstance.current) {
-        mapInstance.current.invalidateSize({ debounceMoveend: true });
+      if (mapInstance.current && mapRef.current) {
+        try {
+          mapInstance.current.invalidateSize({ debounceMoveend: true });
+        } catch { /* ignore if unmounting */ }
       }
     });
     observer.observe(mapRef.current);
@@ -107,31 +111,74 @@ export default function FleetMap({
   // Multi-frame invalidation to sync with CSS sidebar collapse transition
   useEffect(() => {
     if (!mapInstance.current) return;
-    mapInstance.current.invalidateSize();
-    const t1 = setTimeout(() => mapInstance.current?.invalidateSize(), 50);
-    const t2 = setTimeout(() => mapInstance.current?.invalidateSize(), 250);
+    try {
+      mapInstance.current.invalidateSize();
+    } catch {}
+    const t1 = setTimeout(() => {
+      try { mapInstance.current?.invalidateSize(); } catch {}
+    }, 50);
+    const t2 = setTimeout(() => {
+      try { mapInstance.current?.invalidateSize(); } catch {}
+    }, 250);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
   }, [sidebarState]);
 
+  // Dynamic Tile Layer Swapping (Tactical Dark, High-Res Satellite, Clean Street)
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    if (tileLayerRef.current) {
+      mapInstance.current.removeLayer(tileLayerRef.current);
+      tileLayerRef.current = null;
+    }
+
+    if (mapTheme === 'satellite') {
+      tileLayerRef.current = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution: '&copy; Esri World Imagery &mdash; Source: Esri, Maxar, Earthstar Geographics',
+          maxZoom: 18,
+        }
+      ).addTo(mapInstance.current);
+    } else {
+      tileLayerRef.current = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          subdomains: ['a', 'b', 'c'],
+          maxZoom: 19,
+        }
+      ).addTo(mapInstance.current);
+    }
+  }, [mapTheme]);
+
   // Initialize Mumbai Map
   useEffect(() => {
     if (mapInstance.current) return;
     const map = L.map(mapRef.current, {
-      center: [19.0760, 72.8777], // Mumbai Center
-      zoom:   12,
+      center: [19.1800, 72.8650], // Centered to frame MMR from South Bombay to Virar
+      zoom:   11,
       zoomControl: false,
       attributionControl: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap Mumbai',
-      maxZoom: 19,
-    }).addTo(map);
-
     L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Attach initial tile layer immediately on map creation
+    const initialTile = mapTheme === 'satellite'
+      ? L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: '&copy; Esri World Imagery',
+          maxZoom: 18,
+        })
+      : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          subdomains: ['a', 'b', 'c'],
+          maxZoom: 19,
+        });
+    initialTile.addTo(map);
+    tileLayerRef.current = initialTile;
 
     // Map click event
     map.on('click', (e) => {
@@ -142,11 +189,11 @@ export default function FleetMap({
 
     mapInstance.current = map;
 
-    // Draw Mumbai Logistics Hub (BKC)
+    // Draw Mumbai Logistics Hub (MMR Midpoint)
     if (hub) {
       hubMarker.current = L.marker([hub.lat, hub.lng], { icon: hubIcon() })
         .addTo(map)
-        .bindPopup('<b style="color:#00d4ff">AeroRoute Mumbai Hub</b><br><span style="color:#7ba3cc;font-size:11px">Bandra Kurla Complex (BKC)</span>');
+        .bindPopup('<b style="color:#00d4ff">AeroRoute Mumbai Hub</b><br><span style="color:#7ba3cc;font-size:11px">MMR Midpoint Logistics Base (Kandivali/Goregaon)</span>');
     }
 
     // Draw Mumbai No-Fly Zones
@@ -174,6 +221,18 @@ export default function FleetMap({
         </div>`);
       nfzLayers.current.push(circle);
     });
+
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 80);
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+    };
   }, []);
 
   // Update hub marker position
@@ -224,20 +283,28 @@ export default function FleetMap({
     });
 
     drones.forEach(drone => {
+      if (!drone || typeof drone.lat !== 'number' || typeof drone.lng !== 'number') return;
       const isSelected = drone.id === selectedDroneId;
-      const icon = droneIcon(drone.battery_pct, drone.status);
+      const batteryNum = Number(drone.battery_pct ?? 100);
+      const icon = droneIcon(batteryNum, drone.status);
+
+      const altNum = Number(drone.altitude_m ?? 120);
+      const spdNum = Number(drone.speed_kmh ?? 45);
+      const wndNum = Number(drone.wind_gust_ms ?? 4);
+      const fsiNum = Number(drone.fsi ?? 85);
+      const actStatus = drone.action_status || drone.status || 'SAFE';
 
       const popupContent = `
         <div style="font-family:Inter,sans-serif;min-width:180px;color:#e8f4ff">
           <div style="font-weight:800;color:#00d4ff;margin-bottom:6px">🚁 ${drone.id}</div>
-          <div style="font-size:11px;color:#7ba3cc;margin-bottom:8px">${drone.model}</div>
+          <div style="font-size:11px;color:#7ba3cc;margin-bottom:8px">${drone.model || 'Aero Drone'}</div>
           <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <tr><td style="color:#7ba3cc;padding:2px 0">Battery</td><td style="text-align:right;color:${drone.battery_pct > 50 ? '#06ffa5' : drone.battery_pct > 25 ? '#fbbf24' : '#ff3d57'};font-family:monospace">${drone.battery_pct.toFixed(1)}%</td></tr>
-            <tr><td style="color:#7ba3cc;padding:2px 0">Altitude</td><td style="text-align:right;font-family:monospace">${drone.altitude_m.toFixed(0)}m</td></tr>
-            <tr><td style="color:#7ba3cc;padding:2px 0">Speed</td><td style="text-align:right;font-family:monospace">${drone.speed_kmh.toFixed(1)} km/h</td></tr>
-            <tr><td style="color:#7ba3cc;padding:2px 0">Wind</td><td style="text-align:right;font-family:monospace">${drone.wind_gust_ms.toFixed(1)} m/s</td></tr>
-            <tr><td style="color:#7ba3cc;padding:2px 0">FSI</td><td style="text-align:right;color:${drone.fsi > 65 ? '#06ffa5' : drone.fsi > 35 ? '#fbbf24' : '#ff3d57'};font-family:monospace">${drone.fsi.toFixed(1)}</td></tr>
-            <tr><td style="color:#7ba3cc;padding:2px 0">Status</td><td style="text-align:right;color:#00d4ff">${drone.action_status}</td></tr>
+            <tr><td style="color:#7ba3cc;padding:2px 0">Battery</td><td style="text-align:right;color:${batteryNum > 50 ? '#06ffa5' : batteryNum > 25 ? '#fbbf24' : '#ff3d57'};font-family:monospace">${batteryNum.toFixed(1)}%</td></tr>
+            <tr><td style="color:#7ba3cc;padding:2px 0">Altitude</td><td style="text-align:right;font-family:monospace">${altNum.toFixed(0)}m</td></tr>
+            <tr><td style="color:#7ba3cc;padding:2px 0">Speed</td><td style="text-align:right;font-family:monospace">${spdNum.toFixed(1)} km/h</td></tr>
+            <tr><td style="color:#7ba3cc;padding:2px 0">Wind</td><td style="text-align:right;font-family:monospace">${wndNum.toFixed(1)} m/s</td></tr>
+            <tr><td style="color:#7ba3cc;padding:2px 0">FSI</td><td style="text-align:right;color:${fsiNum > 65 ? '#06ffa5' : fsiNum > 35 ? '#fbbf24' : '#ff3d57'};font-family:monospace">${fsiNum.toFixed(1)}</td></tr>
+            <tr><td style="color:#7ba3cc;padding:2px 0">Status</td><td style="text-align:right;color:#00d4ff">${actStatus}</td></tr>
           </table>
         </div>`;
 
@@ -292,9 +359,10 @@ export default function FleetMap({
 
     // Waypoint markers
     wps.forEach((wp) => {
+      if (!wp || typeof wp.lat !== 'number' || typeof wp.lng !== 'number') return;
       const m = L.marker([wp.lat, wp.lng], { icon: waypointIcon(wp.type) })
         .addTo(map)
-        .bindPopup(`<b style="color:#00d4ff">${wp.type.toUpperCase()}</b><br><span style="font-size:11px;color:#7ba3cc">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</span>`);
+        .bindPopup(`<b style="color:#00d4ff">${(wp.type || 'WAYPOINT').toUpperCase()}</b><br><span style="font-size:11px;color:#7ba3cc">${Number(wp.lat).toFixed(4)}, ${Number(wp.lng).toFixed(4)}</span>`);
       routeLayers.current.push(m);
     });
 
@@ -304,7 +372,8 @@ export default function FleetMap({
   return (
     <div
       ref={mapRef}
-      style={{ width: '100%', height: '100%', borderRadius: 0, cursor: 'crosshair' }}
+      className={mapTheme === 'dark' ? 'tactical-dark-map' : ''}
+      style={{ width: '100%', height: '100%', minHeight: '100%', position: 'absolute', inset: 0, borderRadius: 0, cursor: 'crosshair' }}
     />
   );
 }

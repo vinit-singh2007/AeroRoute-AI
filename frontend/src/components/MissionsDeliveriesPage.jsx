@@ -57,8 +57,10 @@ export default function MissionsDeliveriesPage({ onGoToDispatch }) {
 
   return (
     <div style={{
-      height: 'calc(100vh - 60px)',
-      maxHeight: 'calc(100vh - 60px)',
+      height: '100%',
+      maxHeight: '100%',
+      width: '100%',
+      flex: 1,
       overflowY: 'auto',
       padding: '24px 32px',
       boxSizing: 'border-box',

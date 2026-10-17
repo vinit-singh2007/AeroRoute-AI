@@ -5,7 +5,7 @@ const WS_URL = 'ws://localhost:8000/ws/telemetry';
 
 export function useTelemetry() {
   const [drones,     setDrones]     = useState([]);
-  const [hub,        setHub]        = useState({ lat: 19.0657, lng: 72.8687 });
+  const [hub,        setHub]        = useState({ lat: 19.1940, lng: 72.8550 });
   const [connected,  setConnected]  = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const wsRef = useRef(null);
@@ -74,6 +74,19 @@ export function useTelemetry() {
   useEffect(() => {
     isUnmounted.current = false;
     connect();
+
+    // Initial hydration fetch
+    fetch('http://localhost:8000/api/drones')
+      .then(res => res.json())
+      .then(data => {
+        if (!isUnmounted.current && data.drones && data.drones.length > 0) {
+          setDrones(data.drones);
+          setConnected(true);
+          setLastUpdate(new Date());
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isUnmounted.current = true;
       clearInterval(pingTimer.current);
