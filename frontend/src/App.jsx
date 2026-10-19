@@ -138,6 +138,11 @@ export default function App() {
   // Navigate helper with URL synchronization
   const navigateView = (view) => {
     setCurrentView(view);
+    // Always clear the static GA route line when going to overview/dashboard
+    // so the live telemetry corridors are the only thing shown on the map
+    if (view === 'dashboard') {
+      setRouteResult(null);
+    }
     const path = view === 'landing' ? '/' : view === 'dispatch' ? '/mission-dispatch' : view === 'live-drones' ? '/live-drones' : `/${view}`;
     try {
       if (window.location.pathname !== path) {
@@ -257,8 +262,20 @@ export default function App() {
 
             {/* ── RIGHT VIEWPORT: Active View Page (Flex 1) ── */}
             <div style={{ flex: 1, height: '100vh', minHeight: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', position: 'relative' }}>
-              {/* View 2: Mission Control Dashboard (Overview) */}
-              {currentView === 'dashboard' && (
+              {/* ── PERSISTENT FleetMap wrapper: always mounted, CSS-only hide/show ──
+                   Keeps Leaflet map state, drone markers, corridors alive across navigation.
+                   visibility:hidden hides from user but does NOT unmount React children. */}
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                visibility: currentView === 'dashboard' ? 'visible' : 'hidden',
+                opacity: currentView === 'dashboard' ? 1 : 0,
+                pointerEvents: currentView === 'dashboard' ? 'all' : 'none',
+                zIndex: currentView === 'dashboard' ? 1 : -1,
+                transition: 'opacity 150ms ease',
+              }}>
+                {/* View 2: Mission Control Dashboard (Overview) */}
                 <>
                   {/* ── CENTER PANEL: Mumbai Interactive Map ── */}
                   <div className="map-area">
@@ -318,11 +335,52 @@ export default function App() {
                         ))}
                       </div>
 
-                      {/* Mumbai Fleet Active — Placed after themes */}
+                      {/* Mumbai Fleet Active */}
                       <div className="map-chip">
                         <div className="pulse-dot" />
-                        Mumbai Fleet Active ({drones.length})
+                        Fleet Active ({drones.length})
                       </div>
+
+                      {/* Active Missions Count */}
+                      <div className="map-chip" style={{
+                        borderColor: drones.some(d => d.status === 'DELIVERING') ? 'rgba(6,255,165,0.45)' : 'var(--border-subtle)',
+                        color: drones.some(d => d.status === 'DELIVERING') ? 'var(--brand-accent)' : 'var(--text-muted)'
+                      }}>
+                        <span style={{
+                          display: 'inline-block',
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: drones.some(d => d.status === 'DELIVERING') ? '#06ffa5' : '#64748b',
+                          boxShadow: drones.some(d => d.status === 'DELIVERING') ? '0 0 8px #06ffa5' : 'none'
+                        }} />
+                        Delivering: {drones.filter(d => d.status === 'DELIVERING').length}
+                      </div>
+
+                      {/* Quick Dispatch Shortcut */}
+                      <button
+                        onClick={() => navigateView('dispatch')}
+                        id="map-btn-dispatch"
+                        title="Assign new delivery drone mission"
+                        style={{
+                          background: 'rgba(0, 212, 255, 0.15)',
+                          border: '1px solid rgba(0, 212, 255, 0.45)',
+                          color: '#00d4ff',
+                          borderRadius: 20,
+                          padding: '4px 11px',
+                          fontSize: 10.5,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          backdropFilter: 'blur(10px)',
+                          transition: 'all 120ms ease',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <Send size={11} /> + Assign Drone
+                      </button>
 
                       {mapPinnedDest && typeof mapPinnedDest.lat === 'number' && typeof mapPinnedDest.lng === 'number' && (
                         <div className="map-chip" style={{ borderColor: 'rgba(6,255,165,0.4)', color: 'var(--brand-accent)' }}>
@@ -649,7 +707,7 @@ export default function App() {
                     )}
                   </div>
                 </>
-              )}
+              </div> {/* end persistent FleetMap wrapper */}
 
               {/* View 3: Dedicated Full-Page Mission Dispatch Command Center */}
               {currentView === 'dispatch' && (

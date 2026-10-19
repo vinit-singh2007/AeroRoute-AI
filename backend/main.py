@@ -267,6 +267,14 @@ async def dispatch_mission(req: DispatchMissionRequest):
         "start_battery_pct": round(drone.get("battery", 100.0), 1),
     })
 
+    # Broadcast updated telemetry immediately to all connected clients
+    await manager.broadcast({
+        "type": "telemetry",
+        "drones": _simulator.get_drones_summary(),
+        "hub": {"lat": DroneSimulator.HUB_LAT, "lng": DroneSimulator.HUB_LON},
+        "server_time": time.time(),
+    })
+
     return {"status": "SUCCESS", "message": f"Order {req.order_id} assigned to {req.drone_id} and recorded in MongoDB", "drone": drone}
 
 
@@ -396,6 +404,8 @@ class DroneSimulator:
         {"id": "BOM-001", "model": "Phantom-Mumbai X7",   "max_payload_kg": 3.5, "secret_code": "AERO-001"},
         {"id": "BOM-002", "model": "Falcon-Marine Lite",   "max_payload_kg": 2.5, "secret_code": "AERO-002"},
         {"id": "BOM-003", "model": "Eagle-Harbor Pro",     "max_payload_kg": 5.0, "secret_code": "AERO-003"},
+        {"id": "BOM-004", "model": "SkyRaider Cargo",      "max_payload_kg": 4.5, "secret_code": "AERO-004"},
+        {"id": "BOM-005", "model": "AeroTitan Heavy",      "max_payload_kg": 6.0, "secret_code": "AERO-005"},
     ]
 
     # Midway MMR Central Logistics Hub (Centered between Churchgate ~18.93 and Virar ~19.45)
@@ -467,62 +477,91 @@ class DroneSimulator:
 
     def _init_fleet(self):
         self.drones = []
+        self.active_missions = {}
         for d in self.DEFAULT_FLEET:
-            lat = self.HUB_LAT + random.uniform(-0.015, 0.015)
-            lon = self.HUB_LON + random.uniform(-0.015, 0.015)
-            dest_lat = self.HUB_LAT + random.uniform(-0.035, 0.035)
-            dest_lon = self.HUB_LON + random.uniform(-0.035, 0.035)
+            lat = self.HUB_LAT + random.uniform(-0.005, 0.005)
+            lon = self.HUB_LON + random.uniform(-0.005, 0.005)
             lat, lon = self.make_safe_coordinates(lat, lon, 0.5)
-            dest_lat, dest_lon = self.make_safe_coordinates(dest_lat, dest_lon, 0.5)
             self.drones.append({
                 **d,
                 "secret_code":   d.get("secret_code", "AERO-ADMIN"),
                 "lat":           lat,
                 "lon":           lon,
-                "altitude":      random.uniform(80, 150),
-                "battery":       random.uniform(75, 100),
-                "speed":         random.uniform(40, 65),
-                "status":        "DELIVERING",
+                "altitude":      random.uniform(90, 140),
+                "battery":       random.uniform(90, 100),
+                "speed":         random.uniform(45, 60),
+                "status":        "STANDBY",
                 "heading":       random.uniform(0, 360),
-                "dest_lat":      dest_lat,
-                "dest_lon":      dest_lon,
-                "wind_gust":     random.uniform(2, 8),
-                "fsi":           85.0,
+                "dest_lat":      self.HUB_LAT,
+                "dest_lon":      self.HUB_LON,
+                "wind_gust":     random.uniform(2, 6),
+                "fsi":           90.0,
                 "action_status": "SAFE",
+                "order_id":      "STANDBY",
+                "destination_name": "MMR Central Hub (Standby)",
+                "agent_name":    "Logistics Officer",
+                "payload_kg":    0.0,
             })
 
     def sync_from_db(self, db_drones: List[dict]):
-        """Populate or update simulator active fleet from MongoDB documents."""
-        if not db_drones:
-            return
+        """Populate or update simulator active fleet from MongoDB documents and ensure default fleet."""
         new_drones = []
-        for doc in db_drones:
-            lat = doc.get("lat") or self.HUB_LAT
-            lon = doc.get("lng") or self.HUB_LON
-            lat, lon = self.make_safe_coordinates(float(lat), float(lon), 0.5)
-            dest_lat, dest_lon = self.make_safe_coordinates(
-                self.HUB_LAT + random.uniform(-0.03, 0.03),
-                self.HUB_LON + random.uniform(-0.03, 0.03),
-                0.5
-            )
-            new_drones.append({
-                "id": doc["id"],
-                "model": doc.get("model", "Aero-X Standard"),
-                "max_payload_kg": float(doc.get("max_payload_kg", 3.0)),
-                "secret_code": doc.get("secret_code", "AERO-ADMIN"),
-                "lat": float(lat),
-                "lon": float(lon),
-                "altitude": random.uniform(90, 140),
-                "battery": float(doc.get("battery_pct", 100.0)),
-                "speed": random.uniform(45, 60),
-                "status": doc.get("status", "DELIVERING"),
-                "heading": random.uniform(0, 360),
-                "dest_lat": dest_lat,
-                "dest_lon": dest_lon,
-                "wind_gust": random.uniform(2, 6),
-                "fsi": 90.0,
-                "action_status": "SAFE",
-            })
+        existing_ids = set()
+        if db_drones:
+            for doc in db_drones:
+                lat = doc.get("lat") or self.HUB_LAT
+                lon = doc.get("lng") or self.HUB_LON
+                lat, lon = self.make_safe_coordinates(float(lat), float(lon), 0.5)
+                new_drones.append({
+                    "id": doc["id"],
+                    "model": doc.get("model", "Aero-X Standard"),
+                    "max_payload_kg": float(doc.get("max_payload_kg", 3.0)),
+                    "secret_code": doc.get("secret_code", "AERO-ADMIN"),
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "altitude": random.uniform(90, 140),
+                    "battery": float(doc.get("battery_pct", 100.0)),
+                    "speed": random.uniform(45, 60),
+                    "status": doc.get("status", "STANDBY"),
+                    "heading": random.uniform(0, 360),
+                    "dest_lat": float(doc.get("dest_lat", self.HUB_LAT)),
+                    "dest_lon": float(doc.get("dest_lon", self.HUB_LON)),
+                    "wind_gust": random.uniform(2, 6),
+                    "fsi": 90.0,
+                    "action_status": "SAFE",
+                    "order_id": doc.get("order_id", "STANDBY"),
+                    "destination_name": doc.get("destination_name", "MMR Central Hub (Standby)"),
+                    "agent_name": doc.get("agent_name", "Logistics Officer"),
+                    "payload_kg": float(doc.get("payload_kg", 0.0)),
+                })
+                existing_ids.add(doc["id"])
+
+        # Also add any missing default fleet units
+        for d in self.DEFAULT_FLEET:
+            if d["id"] not in existing_ids:
+                lat = self.HUB_LAT + random.uniform(-0.005, 0.005)
+                lon = self.HUB_LON + random.uniform(-0.005, 0.005)
+                lat, lon = self.make_safe_coordinates(lat, lon, 0.5)
+                new_drones.append({
+                    **d,
+                    "secret_code":   d.get("secret_code", "AERO-ADMIN"),
+                    "lat":           lat,
+                    "lon":           lon,
+                    "altitude":      random.uniform(90, 140),
+                    "battery":       100.0,
+                    "speed":         random.uniform(45, 60),
+                    "status":        "STANDBY",
+                    "heading":       random.uniform(0, 360),
+                    "dest_lat":      self.HUB_LAT,
+                    "dest_lon":      self.HUB_LON,
+                    "wind_gust":     random.uniform(2, 6),
+                    "fsi":           90.0,
+                    "action_status": "SAFE",
+                    "order_id":      "STANDBY",
+                    "destination_name": "MMR Central Hub (Standby)",
+                    "agent_name":    "Logistics Officer",
+                    "payload_kg":    0.0,
+                })
         self.drones = new_drones
 
     def add_drone(self, drone_data: dict) -> dict:
@@ -611,6 +650,12 @@ class DroneSimulator:
                 dest_lat = float(mission_data["destination"]["lat"])
                 dest_lon = float(mission_data["destination"]["lng"])
                 dest_lat, dest_lon = self.make_safe_coordinates(dest_lat, dest_lon, 0.4)
+
+                # If drone was idle, delivered, or at another point, launch from MMR Central Hub
+                if drone.get("status") in ["STANDBY", "IDLE", "DELIVERED", "READY", "RETURNING"] or not drone.get("lat"):
+                    drone["lat"] = self.HUB_LAT + random.uniform(-0.002, 0.002)
+                    drone["lon"] = self.HUB_LON + random.uniform(-0.002, 0.002)
+
                 drone["dest_lat"] = dest_lat
                 drone["dest_lon"] = dest_lon
                 drone["order_id"] = mission_data.get("order_id", f"ORD-{random.randint(1000, 9999)}")
@@ -619,6 +664,8 @@ class DroneSimulator:
                 drone["payload_kg"] = float(mission_data.get("payload_kg", 2.0))
                 drone["status"] = "DELIVERING"
                 drone["mission_start_time"] = time.strftime("%H:%M:%S")
+                drone["battery"] = max(drone.get("battery", 100.0), 92.0)
+                drone["speed"] = random.uniform(50.0, 65.0)
 
                 # Record in active missions
                 self.active_missions[drone["order_id"]] = {
@@ -684,28 +731,46 @@ class DroneSimulator:
 
         for drone in self.drones:
             # Nominal step towards target
-            dlat = drone["dest_lat"] - drone["lat"]
-            dlon = drone["dest_lon"] - drone["lon"]
+            dest_lat = float(drone.get("dest_lat") or self.HUB_LAT)
+            dest_lon = float(drone.get("dest_lon") or self.HUB_LON)
+            dlat = dest_lat - drone["lat"]
+            dlon = dest_lon - drone["lon"]
             dist = math.hypot(dlat, dlon)
 
-            step = 0.0004  # ~40 m per tick
+            step = 0.0018  # ~180 m per tick - visibly flies across Mumbai in 1-2 minutes
             if dist < step:
-                # Arrived at destination — mark delivered if active
-                if drone.get("order_id") and drone["order_id"] in self.active_missions:
-                    mission = self.active_missions.pop(drone["order_id"])
-                    mission["status"] = "DELIVERED"
-                    mission["delivered_at"] = time.strftime("%H:%M:%S")
-                    mission["final_battery_pct"] = round(drone["battery"], 1)
-                    mission["distance_km"] = round(haversine(self.HUB_LAT, self.HUB_LON, drone["dest_lat"], drone["dest_lon"]), 2)
-                    self.delivered_missions.insert(0, mission)
-                    try:
-                        asyncio.create_task(db_manager.mark_mission_delivered(mission["order_id"], mission))
-                    except Exception:
-                        pass
-                drone["status"] = "RETURNING" if drone["battery"] < 35 else "DELIVERED"
+                # Arrived at destination
+                if drone.get("status") == "DELIVERING":
+                    if drone.get("order_id") and drone["order_id"] in self.active_missions:
+                        mission = self.active_missions.pop(drone["order_id"])
+                        mission["status"] = "DELIVERED"
+                        mission["delivered_at"] = time.strftime("%H:%M:%S")
+                        mission["final_battery_pct"] = round(drone["battery"], 1)
+                        mission["distance_km"] = round(haversine(self.HUB_LAT, self.HUB_LON, dest_lat, dest_lon), 2)
+                        self.delivered_missions.insert(0, mission)
+                        try:
+                            asyncio.create_task(db_manager.mark_mission_delivered(mission["order_id"], mission))
+                        except Exception:
+                            pass
+                    # Drone completed delivery drop-off, now returns smoothly to Central Hub
+                    drone["status"] = "RETURNING"
+                    drone["dest_lat"] = self.HUB_LAT
+                    drone["dest_lon"] = self.HUB_LON
+                    drone["destination_name"] = "MMR Central Hub (Return)"
+                elif drone.get("status") in ["RETURNING", "RTB"]:
+                    # Arrived back at Hub
+                    drone["status"] = "STANDBY"
+                    drone["order_id"] = "STANDBY"
+                    drone["dest_lat"] = self.HUB_LAT
+                    drone["dest_lon"] = self.HUB_LON
+                    drone["destination_name"] = "MMR Central Hub (Ready)"
+                    drone["battery"] = min(100.0, drone["battery"] + 2.5)
+                elif drone.get("status") in ["STANDBY", "IDLE"]:
+                    drone["battery"] = min(100.0, drone["battery"] + 1.0)
             else:
                 step_lat = (dlat / dist) * step
                 step_lon = (dlon / dist) * step
+                drone["heading"] = (math.degrees(math.atan2(dlon, dlat)) + 360) % 360
 
                 # ── ACTIVE GEOFENCE AVOIDANCE (Artificial Potential Field) ──
                 # Repel dynamically away from any Mumbai No-Fly Zone

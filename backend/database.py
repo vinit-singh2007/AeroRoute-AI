@@ -144,14 +144,14 @@ class DatabaseManager:
             return False
 
     async def seed_default_drones(self, default_fleet: List[dict]):
-        """Seed default drones if drones collection is currently empty."""
+        """Seed default drones if drones are missing in MongoDB."""
         if not self.connected or self.db is None:
             return
         try:
-            count = await self.db.drones.count_documents({})
-            if count == 0:
-                print("[*] Seeding default drone fleet in MongoDB...")
-                for d in default_fleet:
+            for d in default_fleet:
+                existing = await self.db.drones.find_one({"id": d["id"]})
+                if not existing:
+                    print(f"[*] Seeding missing default drone {d['id']} in MongoDB...")
                     await self.upsert_drone(d)
         except Exception as e:
             print(f"[!] DB seed_default_drones error: {e}")

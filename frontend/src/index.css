@@ -878,3 +878,34 @@ body {
 .spin-anim {
   animation: spin 0.8s linear infinite;
 }
+
+/* ============================================================
+   LEAFLET MULTI-DRONE TRACKING STYLES
+   ============================================================ */
+.custom-drone-leaflet-icon {
+  background: transparent !important;
+  border: none !important;
+  transition: transform 0.95s linear;
+  overflow: visible !important; /* Allow badge to render outside iconSize bounds */
+}
+
+/* Force Leaflet internal wrappers to not clip drone badge */
+.leaflet-marker-icon.custom-drone-leaflet-icon,
+.leaflet-marker-icon.custom-drone-leaflet-icon > div {
+  overflow: visible !important;
+}
+
+.custom-destination-leaflet-icon,
+.custom-hub-leaflet-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+@keyframes pulse-corridor {
+  0% { stroke-dashoffset: 24; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.corridor-pulse-line {
+  animation: pulse-corridor 1.2s linear infinite;
+}

@@ -1,5 +1,6 @@
 // AeroRoute — Interactive Fleet Map (Mumbai Logistics Network)
-import { useEffect, useRef, useState } from 'react';
+// Multi-Drone Dynamic Flight Tracking & Corridor Visualization
+import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -11,54 +12,141 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-// Custom SVG drone marker
-function droneIcon(battery, status) {
+// Custom SVG drone marker with real-time floating status badge
+function droneIcon(drone, isSelected) {
+  const status = drone.status;
+  const batteryNum = Number(drone.battery_pct ?? 100);
   const color =
     status === 'RTB'         ? '#ff3d57' :
     status === 'RETURNING'   ? '#fbbf24' :
-    battery < 25             ? '#ff3d57' :
-    battery < 50             ? '#fbbf24' : '#06ffa5';
+    status === 'DELIVERING'  ? '#06ffa5' :
+    batteryNum < 25          ? '#ff3d57' :
+    batteryNum < 50          ? '#fbbf24' : '#00d4ff';
 
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
-      <defs>
-        <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <circle cx="19" cy="19" r="17" fill="rgba(5,12,24,0.85)" stroke="${color}" stroke-width="1.5" filter="url(#glow)"/>
-      <rect x="15" y="15" width="8" height="8" rx="2" fill="${color}" opacity="0.9"/>
-      <line x1="8" y1="11" x2="15" y2="16" stroke="${color}" stroke-width="1.5" opacity="0.7"/>
-      <line x1="30" y1="11" x2="23" y2="16" stroke="${color}" stroke-width="1.5" opacity="0.7"/>
-      <line x1="8"  y1="27" x2="15" y2="22" stroke="${color}" stroke-width="1.5" opacity="0.7"/>
-      <line x1="30" y1="27" x2="23" y2="22" stroke="${color}" stroke-width="1.5" opacity="0.7"/>
-      <circle cx="8"  cy="10" r="3.5" fill="none" stroke="${color}" stroke-width="1.2" opacity="0.8"/>
-      <circle cx="30" cy="10" r="3.5" fill="none" stroke="${color}" stroke-width="1.2" opacity="0.8"/>
-      <circle cx="8"  cy="28" r="3.5" fill="none" stroke="${color}" stroke-width="1.2" opacity="0.8"/>
-      <circle cx="30" cy="28" r="3.5" fill="none" stroke="${color}" stroke-width="1.2" opacity="0.8"/>
-    </svg>`;
+  const isDelivering = status === 'DELIVERING';
+  const isReturning = status === 'RETURNING';
+  const orderText = drone.order_id && drone.order_id !== 'STANDBY' ? drone.order_id : '';
+  const shortId = drone.id.replace('BOM-00', 'BOM-').replace('BOM-0', 'BOM-');
+  const speedDisplay = Math.round(drone.speed_kmh || 52);
+
+  // Badge BELOW drone body — always visible even at top map edge
+  const html = `
+    <div style="position:relative;width:180px;height:72px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;user-select:none;pointer-events:all;cursor:pointer;">
+      <!-- Drone Body Graphic with High-Contrast Pulse -->
+      <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <div style="position:absolute;inset:-4px;border-radius:50%;background:${color}22;box-shadow:0 0 16px ${color};"></div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="17" fill="rgba(5,12,24,0.95)" stroke="${color}" stroke-width="${isSelected ? '2.5' : '2'}"/>
+          <rect x="16" y="16" width="8" height="8" rx="2" fill="${color}" opacity="0.95"/>
+          <line x1="8" y1="10" x2="16" y2="17" stroke="${color}" stroke-width="2"/>
+          <line x1="32" y1="10" x2="24" y2="17" stroke="${color}" stroke-width="2"/>
+          <line x1="8"  y1="30" x2="16" y2="23" stroke="${color}" stroke-width="2"/>
+          <line x1="32" y1="30" x2="24" y2="23" stroke="${color}" stroke-width="2"/>
+          <circle cx="8"  cy="10" r="3.5" fill="${color}33" stroke="${color}" stroke-width="1.6"/>
+          <circle cx="32" cy="10" r="3.5" fill="${color}33" stroke="${color}" stroke-width="1.6"/>
+          <circle cx="8"  cy="30" r="3.5" fill="${color}33" stroke="${color}" stroke-width="1.6"/>
+          <circle cx="32" cy="30" r="3.5" fill="${color}33" stroke="${color}" stroke-width="1.6"/>
+        </svg>
+      </div>
+
+      <!-- Floating Label Badge BELOW drone body -->
+      <div style="
+        margin-top: 3px;
+        background: rgba(4, 10, 22, 0.96);
+        border: 1.5px solid ${isSelected ? '#00d4ff' : color};
+        color: #fff;
+        padding: 3px 9px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 800;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.8), 0 0 ${isSelected ? '14px #00d4ff' : '8px ' + color}99;
+        backdrop-filter: blur(8px);
+      ">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color};"></span>
+        <span style="color:#00d4ff">${shortId}</span>
+        ${orderText ? `<span style="color:#fbbf24">• ${orderText}</span>` : ''}
+        ${isDelivering ? `<span style="color:#06ffa5">(${speedDisplay} km/h)</span>` : ''}
+        ${isReturning ? `<span style="color:#fbbf24">(RTB)</span>` : ''}
+      </div>
+    </div>`;
+
   return L.divIcon({
-    html: svg,
-    className: '',
-    iconSize: [38, 38],
-    iconAnchor: [19, 19],
-    popupAnchor: [0, -20],
+    html: html,
+    className: 'custom-drone-leaflet-icon',
+    iconSize: [180, 72],
+    iconAnchor: [90, 20], // Anchor at center of drone SVG body (top part)
+    popupAnchor: [0, 32], // Popup appears below badge
   });
 }
 
 function hubIcon() {
+  const html = `
+    <div style="
+      background: rgba(5,12,24,0.96);
+      border: 1.5px solid #00d4ff;
+      color: #00d4ff;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      white-space: nowrap;
+      box-shadow: 0 0 14px rgba(0,212,255,0.6), 0 2px 10px rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      pointer-events: auto;
+      cursor: pointer;
+    ">
+      <span>🏭</span>
+      <span>MMR CENTRAL HUB</span>
+    </div>`;
+  return L.divIcon({
+    html,
+    className: 'custom-hub-leaflet-icon',
+    iconSize: [150, 26],
+    iconAnchor: [75, 13],
+  });
+}
+
+function destinationTargetIcon(drone) {
+  const shortId = drone.id.replace('BOM-00', 'BOM-').replace('BOM-0', 'BOM-');
+  const orderText = drone.order_id && drone.order_id !== 'STANDBY' ? drone.order_id : 'MISSION';
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-      <defs>
-        <filter id="hub-glow"><feGaussianBlur stdDeviation="3" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <circle cx="22" cy="22" r="20" fill="rgba(0,212,255,0.12)" stroke="#00d4ff" stroke-width="1.5" filter="url(#hub-glow)"/>
-      <circle cx="22" cy="22" r="10" fill="rgba(0,212,255,0.25)"/>
-      <text x="22" y="27" text-anchor="middle" font-size="14" fill="#00d4ff">🏭</text>
-    </svg>`;
-  return L.divIcon({ html: svg, className: '', iconSize: [44, 44], iconAnchor: [22, 22] });
+    <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+      <div style="
+        position:absolute;
+        bottom:34px;
+        background:rgba(5,12,24,0.92);
+        border:1px solid #06ffa5;
+        color:#06ffa5;
+        padding:2px 7px;
+        border-radius:10px;
+        font-size:9px;
+        font-family:'JetBrains Mono',monospace;
+        font-weight:800;
+        white-space:nowrap;
+        box-shadow:0 0 8px rgba(6,255,165,0.4);
+      ">
+        🎯 ${shortId} TARGET (${orderText})
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34">
+        <circle cx="17" cy="17" r="14" fill="rgba(6,255,165,0.18)" stroke="#06ffa5" stroke-width="2"/>
+        <text x="17" y="22" text-anchor="middle" font-size="14">📦</text>
+      </svg>
+    </div>`;
+  return L.divIcon({
+    html: svg,
+    className: 'custom-destination-leaflet-icon',
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor: [0, -20],
+  });
 }
 
 function waypointIcon(type) {
@@ -67,15 +155,15 @@ function waypointIcon(type) {
   const color = isDest ? '#06ffa5' : isOrigin ? '#00d4ff' : '#7c3aed';
   const emoji = isDest ? '📦' : isOrigin ? '🚁' : '📍';
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-      <circle cx="16" cy="16" r="14" fill="rgba(5,12,24,0.9)" stroke="${color}" stroke-width="2"/>
-      <text x="16" y="21" text-anchor="middle" font-size="13">${emoji}</text>
+    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
+      <circle cx="15" cy="15" r="13" fill="rgba(5,12,24,0.9)" stroke="${color}" stroke-width="2"/>
+      <text x="15" y="20" text-anchor="middle" font-size="12">${emoji}</text>
     </svg>`;
-  return L.divIcon({ html: svg, className: '', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -18] });
+  return L.divIcon({ html: svg, className: '', iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -18] });
 }
 
 export default function FleetMap({
-  drones,
+  drones = [],
   hub,
   routeResult,
   selectedDroneId,
@@ -85,14 +173,23 @@ export default function FleetMap({
   sidebarState,
   mapTheme = 'satellite',
 }) {
-  const mapRef            = useRef(null);
-  const mapInstance       = useRef(null);
-  const tileLayerRef      = useRef(null);
-  const droneMarkers      = useRef({});
-  const routeLayers       = useRef([]);
-  const hubMarker         = useRef(null);
-  const customDestMarker  = useRef(null);
-  const nfzLayers         = useRef([]);
+  const mapRef               = useRef(null);
+  const mapInstance          = useRef(null);
+  const tileLayerRef         = useRef(null);
+  const droneMarkers         = useRef({});
+  const missionCorridors     = useRef({}); // { [droneId]: { line: Polyline, targetMarker: Marker } }
+  const routeLayers          = useRef([]);
+  const hubMarker            = useRef(null);
+  const customDestMarker     = useRef(null);
+  const nfzLayers            = useRef([]);
+  const hasInitialFit        = useRef(false);
+  const prevDeliveringIds    = useRef(new Set()); // Track active delivering drone IDs
+  const dronesRef            = useRef(drones); // Always-fresh ref to latest drones array
+  const hubRef               = useRef(hub);    // Always-fresh ref to hub
+
+  // Keep refs in sync
+  useEffect(() => { dronesRef.current = drones; }, [drones]);
+  useEffect(() => { hubRef.current = hub; }, [hub]);
 
   // Auto-resize Leaflet map whenever container bounds change
   useEffect(() => {
@@ -126,6 +223,40 @@ export default function FleetMap({
     };
   }, [sidebarState]);
 
+  // Fit all active drones and hub into a comfortable view
+  // Uses refs so it always reads the LATEST drone data — never stale
+  // Uses refs so it always reads the LATEST drone data — never stale
+  const fitFleetBounds = useCallback(() => {
+    if (!mapInstance.current) return;
+    const map = mapInstance.current;
+    const latestDrones = dronesRef.current;
+    const latestHub    = hubRef.current;
+    const points = [];
+
+    if (latestHub?.lat && latestHub?.lng) {
+      points.push([latestHub.lat, latestHub.lng]);
+    }
+
+    latestDrones.forEach(d => {
+      const isFlying = d.status === 'DELIVERING' || d.status === 'RETURNING' || d.status === 'IN_FLIGHT' || d.status === 'RTB';
+      if (isFlying) {
+        if (typeof d.dest_lat === 'number' && typeof d.dest_lng === 'number') {
+          points.push([d.dest_lat, d.dest_lng]);
+        }
+        if (typeof d.lat === 'number' && typeof d.lng === 'number') {
+          points.push([d.lat, d.lng]);
+        }
+      }
+    });
+
+    if (points.length >= 2) {
+      const bounds = L.latLngBounds(points);
+      map.fitBounds(bounds, { padding: [80, 80], maxZoom: 13, animate: true, duration: 0.8 });
+    } else if (points.length === 1) {
+      map.setView(points[0], 12);
+    }
+  }, []); // No deps — always reads from refs
+
   // Dynamic Tile Layer Swapping (Tactical Dark, High-Res Satellite, Clean Street)
   useEffect(() => {
     if (!mapInstance.current) return;
@@ -158,7 +289,7 @@ export default function FleetMap({
   useEffect(() => {
     if (mapInstance.current) return;
     const map = L.map(mapRef.current, {
-      center: [19.1800, 72.8650], // Centered to frame MMR from South Bombay to Virar
+      center: [19.1800, 72.8650], // Framed across MMR
       zoom:   11,
       zoomControl: false,
       attributionControl: true,
@@ -166,7 +297,7 @@ export default function FleetMap({
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Attach initial tile layer immediately on map creation
+    // Initial tile
     const initialTile = mapTheme === 'satellite'
       ? L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
           attribution: '&copy; Esri World Imagery',
@@ -180,7 +311,6 @@ export default function FleetMap({
     initialTile.addTo(map);
     tileLayerRef.current = initialTile;
 
-    // Map click event
     map.on('click', (e) => {
       if (onMapClick) {
         onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
@@ -189,14 +319,14 @@ export default function FleetMap({
 
     mapInstance.current = map;
 
-    // Draw Mumbai Logistics Hub (MMR Midpoint)
-    if (hub) {
-      hubMarker.current = L.marker([hub.lat, hub.lng], { icon: hubIcon() })
-        .addTo(map)
-        .bindPopup('<b style="color:#00d4ff">AeroRoute Mumbai Hub</b><br><span style="color:#7ba3cc;font-size:11px">MMR Midpoint Logistics Base (Kandivali/Goregaon)</span>');
-    }
+    // Hub marker: created immediately with map
+    const hubLat = hubRef.current?.lat ?? 19.1940;
+    const hubLng = hubRef.current?.lng ?? 72.8550;
+    hubMarker.current = L.marker([hubLat, hubLng], { icon: hubIcon(), zIndexOffset: 15000 })
+      .addTo(map)
+      .bindPopup('<b style="color:#00d4ff">AeroRoute Mumbai Hub</b><br><span style="color:#7ba3cc;font-size:11px">MMR Central Logistics Base</span>');
 
-    // Draw Mumbai No-Fly Zones
+    // Mumbai No-Fly Zones
     const mumbaiNFZ = [
       { center: [19.0896, 72.8656], radius: 2200, name: 'CSMIA International Airport Exclusion Zone' },
       { center: [18.9150, 72.8300], radius: 1500, name: 'Colaba Naval Dockyard Military Restricted Area' },
@@ -222,28 +352,32 @@ export default function FleetMap({
       nfzLayers.current.push(circle);
     });
 
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 80);
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 300);
+    setTimeout(() => { map.invalidateSize(); }, 80);
+    setTimeout(() => { map.invalidateSize(); }, 300);
 
     return () => {
       map.remove();
       mapInstance.current = null;
+      hubMarker.current = null;
     };
   }, []);
 
-  // Update hub marker position
+  // Hub marker: keep coordinates and icon in sync
   useEffect(() => {
-    if (!mapInstance.current || !hub) return;
-    if (hubMarker.current) {
-      hubMarker.current.setLatLng([hub.lat, hub.lng]);
-    } else {
-      hubMarker.current = L.marker([hub.lat, hub.lng], { icon: hubIcon() })
+    if (!mapInstance.current) return;
+    const lat = hub?.lat ?? 19.1940;
+    const lng = hub?.lng ?? 72.8550;
+
+    if (!hubMarker.current || !mapInstance.current.hasLayer(hubMarker.current)) {
+      if (hubMarker.current) {
+        try { mapInstance.current.removeLayer(hubMarker.current); } catch {}
+      }
+      hubMarker.current = L.marker([lat, lng], { icon: hubIcon(), zIndexOffset: 15000 })
         .addTo(mapInstance.current)
-        .bindPopup('<b style="color:#00d4ff">AeroRoute Mumbai Hub</b><br><span style="color:#7ba3cc;font-size:11px">BKC Central Logistics Base</span>');
+        .bindPopup('<b style="color:#00d4ff">AeroRoute Mumbai Hub</b><br><span style="color:#7ba3cc;font-size:11px">MMR Central Logistics Base</span>');
+    } else {
+      hubMarker.current.setLatLng([lat, lng]);
+      hubMarker.current.setIcon(hubIcon());
     }
   }, [hub]);
 
@@ -266,69 +400,165 @@ export default function FleetMap({
     }
   }, [customDestination]);
 
-  // Update drone markers in real-time
+  // ── MULTI-DRONE REAL-TIME TRACKING & FLIGHT CORRIDORS ──
   useEffect(() => {
     if (!mapInstance.current) return;
     const map = mapInstance.current;
 
-    // Track active drone IDs
-    const currentIds = new Set(drones.map(d => d.id));
+    const flyingStatuses = new Set(['DELIVERING', 'RETURNING', 'IN_FLIGHT', 'RTB']);
 
-    // Remove obsolete markers for drones deleted by user
+    // Separate active flying drones from standby drones at hub
+    const activeFlyingDrones = drones.filter(d =>
+      flyingStatuses.has(d.status) &&
+      typeof d.lat === 'number' &&
+      typeof d.lng === 'number'
+    );
+    const activeDroneIds = new Set(activeFlyingDrones.map(d => d.id));
+
+    // Remove any markers & corridors for drones that are NOT actively flying
+    // (e.g. drones in standby / idle / docked at hub, or removed drones)
     Object.keys(droneMarkers.current).forEach(id => {
-      if (!currentIds.has(id)) {
+      if (!activeDroneIds.has(id)) {
         map.removeLayer(droneMarkers.current[id]);
         delete droneMarkers.current[id];
       }
     });
 
-    drones.forEach(drone => {
-      if (!drone || typeof drone.lat !== 'number' || typeof drone.lng !== 'number') return;
+    Object.keys(missionCorridors.current).forEach(id => {
+      if (!activeDroneIds.has(id)) {
+        const item = missionCorridors.current[id];
+        if (item.line) map.removeLayer(item.line);
+        if (item.targetMarker) map.removeLayer(item.targetMarker);
+        delete missionCorridors.current[id];
+      }
+    });
+
+    // Auto-fit map whenever a NEW drone starts DELIVERING (new dispatch detected)
+    const currentDeliveringIds = new Set(
+      drones.filter(d => d.status === 'DELIVERING' || d.status === 'RETURNING').map(d => d.id)
+    );
+    const hasNewDelivery = [...currentDeliveringIds].some(id => !prevDeliveringIds.current.has(id));
+    if (hasNewDelivery || (!hasInitialFit.current && drones.length > 0)) {
+      hasInitialFit.current = true;
+      setTimeout(() => fitFleetBounds(), 300);
+    }
+    prevDeliveringIds.current = currentDeliveringIds;
+
+    // Render ONLY active flying drones (no cluster at the hub!)
+    activeFlyingDrones.forEach(drone => {
       const isSelected = drone.id === selectedDroneId;
       const batteryNum = Number(drone.battery_pct ?? 100);
-      const icon = droneIcon(batteryNum, drone.status);
+      const icon = droneIcon(drone, isSelected);
 
       const altNum = Number(drone.altitude_m ?? 120);
-      const spdNum = Number(drone.speed_kmh ?? 45);
+      const spdNum = Number(drone.speed_kmh ?? 50);
       const wndNum = Number(drone.wind_gust_ms ?? 4);
-      const fsiNum = Number(drone.fsi ?? 85);
-      const actStatus = drone.action_status || drone.status || 'SAFE';
+      const fsiNum = Number(drone.fsi ?? 88);
 
       const popupContent = `
-        <div style="font-family:Inter,sans-serif;min-width:180px;color:#e8f4ff">
-          <div style="font-weight:800;color:#00d4ff;margin-bottom:6px">🚁 ${drone.id}</div>
-          <div style="font-size:11px;color:#7ba3cc;margin-bottom:8px">${drone.model || 'Aero Drone'}</div>
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <tr><td style="color:#7ba3cc;padding:2px 0">Battery</td><td style="text-align:right;color:${batteryNum > 50 ? '#06ffa5' : batteryNum > 25 ? '#fbbf24' : '#ff3d57'};font-family:monospace">${batteryNum.toFixed(1)}%</td></tr>
+        <div style="font-family:Inter,sans-serif;min-width:200px;color:#e8f4ff;padding:4px 0">
+          <div style="font-weight:900;color:#00d4ff;font-size:14px;margin-bottom:3px">🚁 ${drone.id}</div>
+          <div style="font-size:11px;color:#7ba3cc;margin-bottom:8px">${drone.model || 'Aero Drone'} • <strong style="color:#06ffa5">${drone.status}</strong></div>
+          <div style="font-size:11px;color:#fbbf24;margin-bottom:6px">📦 Order: <strong>${drone.order_id || 'STANDBY'}</strong></div>
+          <div style="font-size:11px;color:#e2e8f0;margin-bottom:8px">🎯 Target: <strong>${drone.destination_name || 'Mumbai Airspace'}</strong></div>
+          <div style="font-size:10.5px;color:#94a3b8;margin-bottom:8px">👤 Agent: <strong>${drone.agent_name || 'Dispatch Officer'}</strong></div>
+          <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+            <tr><td style="color:#7ba3cc;padding:2px 0">Battery</td><td style="text-align:right;color:${batteryNum > 50 ? '#06ffa5' : batteryNum > 25 ? '#fbbf24' : '#ff3d57'};font-family:monospace;font-weight:700">${batteryNum.toFixed(1)}%</td></tr>
             <tr><td style="color:#7ba3cc;padding:2px 0">Altitude</td><td style="text-align:right;font-family:monospace">${altNum.toFixed(0)}m</td></tr>
             <tr><td style="color:#7ba3cc;padding:2px 0">Speed</td><td style="text-align:right;font-family:monospace">${spdNum.toFixed(1)} km/h</td></tr>
             <tr><td style="color:#7ba3cc;padding:2px 0">Wind</td><td style="text-align:right;font-family:monospace">${wndNum.toFixed(1)} m/s</td></tr>
-            <tr><td style="color:#7ba3cc;padding:2px 0">FSI</td><td style="text-align:right;color:${fsiNum > 65 ? '#06ffa5' : fsiNum > 35 ? '#fbbf24' : '#ff3d57'};font-family:monospace">${fsiNum.toFixed(1)}</td></tr>
-            <tr><td style="color:#7ba3cc;padding:2px 0">Status</td><td style="text-align:right;color:#00d4ff">${actStatus}</td></tr>
+            <tr><td style="color:#7ba3cc;padding:2px 0">FSI Safety</td><td style="text-align:right;color:${fsiNum > 65 ? '#06ffa5' : fsiNum > 35 ? '#fbbf24' : '#ff3d57'};font-family:monospace">${fsiNum.toFixed(1)}</td></tr>
           </table>
         </div>`;
 
+      // 1. Update/Add Drone Marker at actual flying coordinates
       if (droneMarkers.current[drone.id]) {
         const marker = droneMarkers.current[drone.id];
         marker.setLatLng([drone.lat, drone.lng]);
         marker.setIcon(icon);
+        marker.setZIndexOffset(isSelected ? 20000 : 10000);
         if (marker.getPopup()) marker.getPopup().setContent(popupContent);
       } else {
-        const marker = L.marker([drone.lat, drone.lng], { icon, zIndexOffset: isSelected ? 1000 : 0 })
+        const marker = L.marker([drone.lat, drone.lng], { icon, zIndexOffset: isSelected ? 20000 : 10000 })
           .addTo(map)
-          .bindPopup(popupContent, { maxWidth: 220 });
-        marker.on('click', () => onDroneSelect(drone.id));
+          .bindPopup(popupContent, { maxWidth: 240 });
+        marker.on('click', () => onDroneSelect?.(drone.id));
         droneMarkers.current[drone.id] = marker;
       }
-    });
-  }, [drones, selectedDroneId]);
 
-  // Draw GA optimized route
+      // 2. Active Flight Corridor & Target Pin
+      const hasActiveMission = typeof drone.dest_lat === 'number' && typeof drone.dest_lng === 'number';
+
+      if (hasActiveMission) {
+        const isDelivering = drone.status === 'DELIVERING' || drone.status === 'IN_FLIGHT';
+        const corridorColor = isDelivering ? '#00d4ff' : '#fbbf24';
+        const corridorCoords = [[drone.lat, drone.lng], [drone.dest_lat, drone.dest_lng]];
+
+        if (!missionCorridors.current[drone.id]) {
+          missionCorridors.current[drone.id] = {};
+        }
+
+        const entry = missionCorridors.current[drone.id];
+
+        // Flight line
+        if (entry.line) {
+          entry.line.setLatLngs(corridorCoords);
+          entry.line.setStyle({ color: corridorColor });
+        } else {
+          entry.line = L.polyline(corridorCoords, {
+            color: corridorColor,
+            weight: 3,
+            dashArray: '8 6',
+            opacity: 0.85,
+            className: 'corridor-pulse-line',
+          }).addTo(map);
+        }
+
+        // Target marker at destination (only if delivering to customer)
+        if (isDelivering) {
+          if (entry.targetMarker) {
+            entry.targetMarker.setLatLng([drone.dest_lat, drone.dest_lng]);
+            entry.targetMarker.setIcon(destinationTargetIcon(drone));
+          } else {
+            entry.targetMarker = L.marker([drone.dest_lat, drone.dest_lng], {
+              icon: destinationTargetIcon(drone),
+              zIndexOffset: 300,
+            })
+              .addTo(map)
+              .bindPopup(`
+                <div style="font-family:Inter,sans-serif;color:#e8f4ff;padding:4px">
+                  <b style="color:#06ffa5">🎯 Delivery Destination</b><br>
+                  <span style="font-size:12px;font-weight:700">${drone.destination_name}</span><br>
+                  <span style="color:#7ba3cc;font-size:11px">Assigned Drone: <b>${drone.id}</b></span><br>
+                  <span style="color:#fbbf24;font-size:11px">Order: <b>${drone.order_id}</b> • Agent: <b>${drone.agent_name || ''}</b></span>
+                </div>
+              `);
+          }
+        } else if (entry.targetMarker) {
+          map.removeLayer(entry.targetMarker);
+          entry.targetMarker = null;
+        }
+      } else if (missionCorridors.current[drone.id]) {
+        // Drone no longer has active destination, clean up corridor
+        const entry = missionCorridors.current[drone.id];
+        if (entry.line) map.removeLayer(entry.line);
+        if (entry.targetMarker) map.removeLayer(entry.targetMarker);
+        delete missionCorridors.current[drone.id];
+      }
+    });
+
+    // Auto-fit bounds on first populated load (no active deliveries yet)
+    if (!hasInitialFit.current && drones.length > 0 && !drones.some(d => flyingStatuses.has(d.status))) {
+      hasInitialFit.current = true;
+      setTimeout(() => fitFleetBounds(), 200);
+    }
+  }, [drones, selectedDroneId, fitFleetBounds]);
+
+  // Draw GA optimized route if present
   useEffect(() => {
     if (!mapInstance.current) return;
     const map = mapInstance.current;
 
-    // Clear previous route layers
     routeLayers.current.forEach(l => map.removeLayer(l));
     routeLayers.current = [];
 
@@ -337,19 +567,18 @@ export default function FleetMap({
     const wps = routeResult.waypoints;
     const coords = wps.map(w => [w.lat, w.lng]);
 
-    // GA Optimized route — blue
+    // GA Optimized route
     const routeLine = L.polyline(coords, {
       color:   '#00d4ff',
-      weight:  3.5,
+      weight:  4,
       opacity: 0.9,
     }).addTo(map);
 
-    // Safe landing corridor — last segment green
     if (coords.length >= 2) {
       const lastTwo = coords.slice(-2);
       const landingLine = L.polyline(lastTwo, {
         color:   '#06ffa5',
-        weight:  4.5,
+        weight:  5,
         opacity: 0.95,
       }).addTo(map);
       routeLayers.current.push(landingLine);
@@ -357,23 +586,62 @@ export default function FleetMap({
 
     routeLayers.current.push(routeLine);
 
-    // Waypoint markers
     wps.forEach((wp) => {
       if (!wp || typeof wp.lat !== 'number' || typeof wp.lng !== 'number') return;
-      const m = L.marker([wp.lat, wp.lng], { icon: waypointIcon(wp.type) })
+      if (wp.type === 'origin') return; // Do not draw fake origin pin over drone or hub
+      const m = L.marker([wp.lat, wp.lng], { icon: waypointIcon(wp.type), zIndexOffset: 300 })
         .addTo(map)
         .bindPopup(`<b style="color:#00d4ff">${(wp.type || 'WAYPOINT').toUpperCase()}</b><br><span style="font-size:11px;color:#7ba3cc">${Number(wp.lat).toFixed(4)}, ${Number(wp.lng).toFixed(4)}</span>`);
       routeLayers.current.push(m);
     });
-
-    map.fitBounds(routeLine.getBounds(), { padding: [45, 45] });
   }, [routeResult]);
 
   return (
-    <div
-      ref={mapRef}
-      className={mapTheme === 'dark' ? 'tactical-dark-map' : ''}
-      style={{ width: '100%', height: '100%', minHeight: '100%', position: 'absolute', inset: 0, borderRadius: 0, cursor: 'crosshair' }}
-    />
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div
+        ref={mapRef}
+        className={mapTheme === 'dark' ? 'tactical-dark-map' : ''}
+        style={{ width: '100%', height: '100%', minHeight: '100%', position: 'absolute', inset: 0, borderRadius: 0, cursor: 'crosshair' }}
+      />
+
+      {/* Floating Center Fleet Button */}
+      <button
+        onClick={fitFleetBounds}
+        id="center-fleet-btn"
+        title="Frame all assigned active drones across Mumbai Airspace"
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          right: 60,
+          zIndex: 500,
+          background: 'rgba(5, 12, 24, 0.92)',
+          border: '1px solid rgba(0, 212, 255, 0.45)',
+          color: '#00d4ff',
+          padding: '6px 12px',
+          borderRadius: 20,
+          fontSize: 11,
+          fontFamily: 'JetBrains Mono, monospace',
+          fontWeight: 800,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          cursor: 'pointer',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
+          transition: 'all 140ms ease',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'rgba(0, 212, 255, 0.2)';
+          e.currentTarget.style.color = '#fff';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'rgba(5, 12, 24, 0.92)';
+          e.currentTarget.style.color = '#00d4ff';
+        }}
+      >
+        <span>🎯</span>
+        <span>Fleet View ({drones.length} Drones)</span>
+      </button>
+    </div>
   );
 }

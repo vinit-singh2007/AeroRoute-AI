@@ -19,7 +19,8 @@ import {
   RefreshCw,
   ArrowLeft,
   Check,
-  Lock
+  Lock,
+  Radio
 } from 'lucide-react';
 import {
   addDrone,
@@ -338,6 +339,15 @@ export default function MissionDispatchPage({
 
       toast(`🚀 Order ${orderId} Assigned to ${selectedDroneId}! Launching to ${dest.name}`, 'success');
       generateNewOrderId();
+
+      // Stay on dispatch page — user can assign more drones
+      // Next available (non-delivering) drone auto-selected
+      setTimeout(() => {
+        const nextDrone = drones.find(d => d.id !== selectedDroneId && d.status !== 'DELIVERING');
+        if (nextDrone) {
+          setSelectedDroneId(nextDrone.id);
+        }
+      }, 500);
     } catch (err) {
       toast(`Dispatch assignment failed: ${err.message}`, 'error');
     } finally {
@@ -432,6 +442,59 @@ export default function MissionDispatchPage({
           flexDirection: 'column',
           gap: 20,
         }}>
+
+          {/* ── ACTIVE DISPATCH SUCCESS BANNER ── */}
+          {lastDispatched && (
+            <div style={{
+              padding: '16px 20px',
+              background: 'linear-gradient(90deg, rgba(6, 255, 165, 0.12) 0%, rgba(0, 212, 255, 0.08) 100%)',
+              border: '1px solid rgba(6, 255, 165, 0.45)',
+              borderRadius: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+              animation: 'fadeIn 0.3s ease',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 26 }}>🚀</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: '#06ffa5', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>Order {lastDispatched.orderId} Assigned to {lastDispatched.droneId}!</span>
+                    <span style={{ fontSize: 10, background: 'rgba(6,255,165,0.2)', padding: '2px 8px', borderRadius: 10, color: '#06ffa5', fontWeight: 800 }}>
+                      FLYING LIVE
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    Destination: <strong style={{ color: '#fff' }}>{lastDispatched.destinationName}</strong> • Dispatched by {dispatcherName} at {lastDispatched.time}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={onNavigateToDashboard}
+                  className="btn btn-primary btn-sm"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 0 14px rgba(0,212,255,0.4)',
+                  }}
+                  id="btn-view-live-drone-map"
+                >
+                  <Radio size={14} /> View All Drones Moving on Map ➔
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 2-Column Balanced Form Grid */}
           <div style={{
@@ -608,11 +671,16 @@ export default function MissionDispatchPage({
                     onChange={e => setSelectedDroneId(e.target.value)}
                     style={{ flex: 1, fontSize: 12, padding: '8px 10px' }}
                   >
-                    {drones.map(d => (
-                      <option key={d.id} value={d.id}>
-                        {d.id} — {d.model} ({d.battery_pct?.toFixed(0)}% Battery)
-                      </option>
-                    ))}
+                    {drones.map(d => {
+                      const isDelivering = d.status === 'DELIVERING';
+                      const isReturning = d.status === 'RETURNING';
+                      const statusTag = isDelivering ? `⚡ EN ROUTE (${d.order_id || 'MISSION'})` : isReturning ? '🔄 RETURNING' : '🟢 READY / STANDBY';
+                      return (
+                        <option key={d.id} value={d.id}>
+                          {d.id} — {d.model} • {d.battery_pct?.toFixed(0)}% Bat [{statusTag}]
+                        </option>
+                      );
+                    })}
                   </select>
                   {selectedDroneId && (
                     <button
