@@ -6,6 +6,7 @@ const WS_URL = 'ws://localhost:8000/ws/telemetry';
 export function useTelemetry() {
   const [drones,     setDrones]     = useState([]);
   const [hub,        setHub]        = useState({ lat: 19.1940, lng: 72.8550 });
+  const [weather,    setWeather]    = useState(null);
   const [connected,  setConnected]  = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const wsRef = useRef(null);
@@ -47,6 +48,7 @@ export function useTelemetry() {
           if (data.type === 'telemetry') {
             setDrones(data.drones || []);
             if (data.hub) setHub(data.hub);
+            if (data.weather) setWeather(data.weather);
             setLastUpdate(new Date());
           }
         } catch { /* ignore non-json messages */ }
@@ -104,10 +106,22 @@ export function useTelemetry() {
     }
   }, []);
 
+  const refreshFleet = useCallback(() => {
+    fetch('http://localhost:8000/api/drones')
+      .then(res => res.json())
+      .then(data => {
+        if (!isUnmounted.current && data.drones) {
+          setDrones(data.drones);
+          setLastUpdate(new Date());
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const simulateStorm = useCallback(() => sendCommand('SIMULATE_STORM'), [sendCommand]);
   const forceRTB      = useCallback(() => sendCommand('FORCE_RTB'),      [sendCommand]);
   const resetFleet    = useCallback(() => sendCommand('RESET'),          [sendCommand]);
   const clearFleet    = useCallback(() => sendCommand('CLEAR_FLEET'),    [sendCommand]);
 
-  return { drones, hub, connected, lastUpdate, simulateStorm, forceRTB, resetFleet, clearFleet };
+  return { drones, hub, weather, connected, lastUpdate, refreshFleet, simulateStorm, forceRTB, resetFleet, clearFleet };
 }

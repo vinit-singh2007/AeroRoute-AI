@@ -77,7 +77,7 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 20,
       }}>
         {/* Sleek Hero Title positioned in the lower area */}
         <h1 style={{
@@ -85,7 +85,7 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
           fontWeight: 900,
           lineHeight: 1.15,
           letterSpacing: '-1px',
-          marginBottom: 8,
+          marginBottom: 20,
           textShadow: '0 4px 24px rgba(0, 0, 0, 0.9)',
         }}>
           Autonomous Drone Fleet &{' '}
@@ -104,15 +104,15 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
           color: '#d4e6f9',
           maxWidth: 580,
           lineHeight: 1.45,
-          marginBottom: 16,
+          marginBottom: 20,
           fontWeight: 400,
           textShadow: '0 2px 12px rgba(0, 0, 0, 0.9)',
         }}>
-          AI & Soft Computing mission control for autonomous delivery systems across Mumbai.
+          {/* AI & Soft Computing mission control for autonomous delivery systems across Mumbai. */}
         </p>
 
         {/* CTA Buttons */}
-        <div style={{ display: 'flex', gap: 14, marginBottom: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: 16, marginBottom: 50, flexWrap: 'wrap', justifyContent: 'center' }}>
           <button
             className="btn btn-primary"
             onClick={onLaunchDashboard}
@@ -150,7 +150,7 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
               id="landing-missions-btn"
             >
               <Radio size={16} />
-              📦 Live Deliveries & Missions
+              Live Fleet Map
             </button>
           )}
         </div>
@@ -164,7 +164,7 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
           flexWrap: 'wrap',
           width: '100%',
         }}>
-          <div style={{
+          {/* <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -174,13 +174,9 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
             border: '1px solid rgba(0, 212, 255, 0.25)',
             backdropFilter: 'blur(10px)',
           }}>
-            <MapPin size={12} color="var(--brand-primary)" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#e8f4ff' }}>
-              Base: Mumbai BKC Hub
-            </span>
-          </div>
+          </div> */}
 
-          <div style={{
+          {/* <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -190,13 +186,9 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
             border: '1px solid rgba(255, 61, 87, 0.3)',
             backdropFilter: 'blur(10px)',
           }}>
-            <Shield size={12} color="var(--brand-danger)" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#e8f4ff' }}>
-              Geofence: 4 Guarded NFZs
-            </span>
-          </div>
+          </div> */}
 
-          <div style={{
+          {/* <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -206,11 +198,7 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
             border: '1px solid rgba(6, 255, 165, 0.3)',
             backdropFilter: 'blur(10px)',
           }}>
-            <Radio size={12} color="var(--brand-accent)" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#e8f4ff' }}>
-              Telemetry: 1 Hz Live Stream
-            </span>
-          </div>
+          </div> */}
         </div>
       </div>
 

@@ -21,7 +21,7 @@ export default function EmergencyControls({ onSimulateStorm, onForceRTB, onReset
       setFsiResult(result);
       toast(`FSI: ${result.safety_index} — ${result.action_status}`,
             result.action_status === 'SAFE' ? 'success' :
-            result.action_status === 'REROUTE_RECOMMENDED' ? 'warning' : 'error');
+            (result.action_status === 'CAUTION' || result.action_status === 'REROUTE_RECOMMENDED') ? 'warning' : 'error');
     } catch (e) {
       toast(`FSI evaluation failed: ${e.message}`, 'error');
     } finally {
@@ -73,9 +73,9 @@ export default function EmergencyControls({ onSimulateStorm, onForceRTB, onReset
           <div className="route-result" style={{
             marginTop: 10,
             borderColor: fsiResult.action_status === 'SAFE' ? 'rgba(6,255,165,0.3)' :
-                         fsiResult.action_status === 'REROUTE_RECOMMENDED' ? 'rgba(251,191,36,0.3)' : 'rgba(255,61,87,0.3)',
+                         (fsiResult.action_status === 'CAUTION' || fsiResult.action_status === 'REROUTE_RECOMMENDED') ? 'rgba(251,191,36,0.3)' : 'rgba(255,61,87,0.3)',
             background:  fsiResult.action_status === 'SAFE' ? 'rgba(6,255,165,0.04)' :
-                         fsiResult.action_status === 'REROUTE_RECOMMENDED' ? 'rgba(251,191,36,0.04)' : 'rgba(255,61,87,0.06)',
+                         (fsiResult.action_status === 'CAUTION' || fsiResult.action_status === 'REROUTE_RECOMMENDED') ? 'rgba(251,191,36,0.04)' : 'rgba(255,61,87,0.06)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 28, fontWeight: 900, fontFamily: 'JetBrains Mono, monospace', color: fsiResult.status_color }}>
@@ -83,7 +83,7 @@ export default function EmergencyControls({ onSimulateStorm, onForceRTB, onReset
               </span>
               <span className={`status-chip ${
                 fsiResult.action_status === 'SAFE' ? 'DELIVERING' :
-                fsiResult.action_status === 'REROUTE_RECOMMENDED' ? 'RETURNING' : 'RTB'
+                (fsiResult.action_status === 'CAUTION' || fsiResult.action_status === 'REROUTE_RECOMMENDED') ? 'RETURNING' : 'RTB'
               }`} style={{ fontSize: 10 }}>
                 {fsiResult.action_status.replace(/_/g, ' ')}
               </span>

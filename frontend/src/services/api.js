@@ -21,6 +21,14 @@ export async function optimizeRoute(payload) {
   });
 }
 
+// POST /api/astar-route (A* Shortest Route with Red Zone & Weather Avoidance)
+export async function astarRoute(payload) {
+  return apiFetch('/api/astar-route', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // POST /api/predict-battery
 export async function predictBattery(payload) {
   return apiFetch('/api/predict-battery', {
@@ -111,3 +119,16 @@ export async function checkPreFlightSafety(payload) {
   });
 }
 
+// POST /api/emergency-rtb/:droneId — Abort mission & return to hub via A* safe path
+export async function emergencyRTB(droneId) {
+  return apiFetch(`/api/emergency-rtb/${encodeURIComponent(droneId)}`, {
+    method: 'POST',
+  });
+}
+
+// POST /api/parachute-deploy/:droneId — Deploy emergency parachute mid-flight
+export async function parachuteDeploy(droneId) {
+  return apiFetch(`/api/parachute-deploy/${encodeURIComponent(droneId)}`, {
+    method: 'POST',
+  });
+}

@@ -1,0 +1,352 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AeroRoute AI — Project Report</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap");
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, sans-serif; background: #f0f4f8; color: #1a202c; font-size: 13px; line-height: 1.55; }
+    .page { width: 210mm; min-height: 297mm; margin: 12mm auto; background: #fff; padding: 14mm 16mm; box-shadow: 0 8px 40px rgba(0,0,0,.12); position: relative; page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+    .page-header { border-bottom: 3px solid #0099cc; padding-bottom: 8px; margin-bottom: 14px; display: flex; align-items: flex-end; justify-content: space-between; }
+    .logo-text { font-size: 22px; font-weight: 900; background: linear-gradient(135deg,#0099cc,#00cc88,#6633cc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { font-size: 9.5px; color: #64748b; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; text-align: right; }
+    .cover-hero { text-align: center; padding: 18px 0 24px; border-bottom: 1px solid #e2e8f0; margin-bottom: 20px; }
+    .cover-badge { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg,#003355,#005588); color: #00d4ff; padding: 4px 14px; border-radius: 20px; font-size: 9.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; margin-bottom: 14px; }
+    .cover-title { font-size: 36px; font-weight: 900; line-height: 1.1; color: #0f172a; margin-bottom: 6px; letter-spacing: -1.5px; }
+    .cover-title span { background: linear-gradient(135deg,#0099cc,#00cc88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .cover-tagline { font-size: 13px; color: #475569; max-width: 420px; margin: 0 auto 20px; line-height: 1.5; }
+    .cover-meta-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 20px 0; }
+    .meta-card { background: linear-gradient(135deg,#f8faff,#eef4ff); border: 1px solid #c7d8f5; border-radius: 8px; padding: 10px 12px; text-align: center; }
+    .meta-value { font-size: 14px; font-weight: 900; color: #0066aa; font-family: "JetBrains Mono", monospace; }
+    .meta-label { font-size: 8.5px; color: #64748b; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; margin-top: 2px; }
+    .tech-table, .api-table, .fuzzy-table, .comp-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 10px 0 16px; }
+    .tech-table th, .api-table th, .fuzzy-table th, .comp-table th { background: #0f3460; color: #fff; padding: 7px 10px; text-align: left; font-size: 9.5px; letter-spacing: .8px; text-transform: uppercase; }
+    .tech-table td, .api-table td, .fuzzy-table td, .comp-table td { padding: 6px 10px; border-bottom: 1px solid #e9eef5; vertical-align: top; }
+    .tech-table tr:nth-child(even) td, .api-table tr:nth-child(even) td, .fuzzy-table tr:nth-child(even) td, .comp-table tr:nth-child(even) td { background: #f7faff; }
+    .fuzzy-table th { background: #4c1d95; }
+    .fuzzy-table tr:nth-child(even) td { background: #faf5ff; }
+    .comp-table th { background: #1e293b; color: #94a3b8; }
+    .tag { display: inline-block; background: #e0f2ff; color: #0066aa; border-radius: 4px; padding: 1px 6px; font-size: 9px; font-weight: 700; font-family: "JetBrains Mono", monospace; }
+    .section-title { font-size: 15px; font-weight: 800; color: #0f172a; border-left: 4px solid #0099cc; padding-left: 10px; margin: 16px 0 8px; }
+    .section-sub { font-size: 12px; font-weight: 700; color: #334155; margin: 10px 0 5px; }
+    p { font-size: 11.5px; color: #334155; margin-bottom: 7px; line-height: 1.6; }
+    .algo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+    .algo-card { border: 1px solid #c7d8f5; border-radius: 8px; padding: 11px 13px; background: linear-gradient(135deg,#f0f8ff,#fafcff); }
+    .algo-title { font-size: 11px; font-weight: 800; color: #0f3460; margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+    .algo-card p { font-size: 10.5px; margin-bottom: 4px; }
+    .param-list { list-style: none; padding: 0; }
+    .param-list li { font-size: 10px; color: #475569; padding: 1px 0; display: flex; align-items: center; gap: 5px; }
+    .param-list li::before { content: "▸"; color: #0099cc; font-size: 9px; }
+    .flow-diagram { display: flex; align-items: center; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
+    .flow-box { background: #0f3460; color: #fff; border-radius: 6px; padding: 7px 11px; font-size: 9.5px; font-weight: 700; text-align: center; min-width: 90px; }
+    .flow-box.green { background: #065f46; }
+    .flow-box.accent { background: #4c1d95; }
+    .flow-arrow { color: #0099cc; font-size: 14px; font-weight: 900; }
+    .method-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 8.5px; font-weight: 800; font-family: "JetBrains Mono", monospace; }
+    .method-get { background: #d1fae5; color: #065f46; }
+    .method-post { background: #dbeafe; color: #1d4ed8; }
+    .method-ws { background: #fde8d8; color: #c2410c; }
+    .method-del { background: #fee2e2; color: #dc2626; }
+    .nfz-list { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 8px 0 14px; }
+    .nfz-item { background: #fff1f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 6px; padding: 7px 10px; font-size: 10px; }
+    .nfz-item .name { font-weight: 700; color: #991b1b; }
+    .nfz-item .coords { font-family: "JetBrains Mono", monospace; font-size: 9px; color: #64748b; }
+    .feature-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 10px 0; }
+    .feature-pill { display: flex; align-items: flex-start; gap: 7px; background: #f8faff; border: 1px solid #dde8f8; border-radius: 7px; padding: 8px 10px; }
+    .feature-pill .emoji { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .feature-pill .pill-title { font-size: 10px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+    .feature-pill .pill-desc { font-size: 9.5px; color: #64748b; line-height: 1.4; }
+    .comp-name { font-family: "JetBrains Mono", monospace; font-size: 9.5px; font-weight: 700; color: #0066aa; }
+    .highlight-box { background: linear-gradient(135deg,#e0f2fe,#f0fdf4); border: 1px solid #7dd3fc; border-left: 4px solid #0099cc; border-radius: 8px; padding: 10px 13px; margin: 10px 0; font-size: 11px; color: #0f172a; }
+    .highlight-box.amber { background: linear-gradient(135deg,#fffbeb,#fef3c7); border-color: #fbbf24; border-left-color: #d97706; }
+    .highlight-box.purple { background: linear-gradient(135deg,#f5f3ff,#ede9fe); border-color: #c4b5fd; border-left-color: #7c3aed; }
+    .page-footer { position: absolute; bottom: 8mm; left: 16mm; right: 16mm; display: flex; justify-content: space-between; align-items: center; font-size: 8.5px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 5px; }
+    .divider { border: none; border-top: 1px solid #e2e8f0; margin: 12px 0; }
+    @media print { body { background: white; } .page { margin: 0; box-shadow: none; width: 100%; } .print-btn { display: none; } }
+    .print-btn { position: fixed; bottom: 24px; right: 24px; background: linear-gradient(135deg,#0099cc,#00cc88); color: white; border: none; border-radius: 30px; padding: 12px 22px; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 20px rgba(0,153,204,.4); z-index: 999; font-family: Inter, sans-serif; }
+  </style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-text">AeroRoute AI</div>
+    <div class="subtitle">Autonomous Drone Delivery Platform &bull; Technical Report<br>Mumbai, Maharashtra &mdash; October 2026</div>
+  </div>
+  <div class="cover-hero">
+    <div class="cover-badge">&#x1F681; Project Report</div>
+    <div class="cover-title">AeroRoute <span>AI</span></div>
+    <div class="cover-tagline">AI &amp; Soft Computing se powered ek fully autonomous drone delivery fleet management system &mdash; Real-time telemetry, Genetic Algorithm route optimization, Fuzzy Logic safety analysis aur Google Photorealistic 3D Maps ke saath Mumbai ki skies mein operate karta hai.</div>
+  </div>
+  <div class="cover-meta-grid">
+    <div class="meta-card"><div class="meta-value">2</div><div class="meta-label">Core Services</div></div>
+    <div class="meta-card"><div class="meta-value">16</div><div class="meta-label">React Components</div></div>
+    <div class="meta-card"><div class="meta-value">12+</div><div class="meta-label">REST / WS APIs</div></div>
+    <div class="meta-card"><div class="meta-value">120 Gen</div><div class="meta-label">GA Generations</div></div>
+    <div class="meta-card"><div class="meta-value">18 Rules</div><div class="meta-label">Fuzzy Rule-Base</div></div>
+    <div class="meta-card"><div class="meta-value">1 Hz</div><div class="meta-label">Live Telemetry Rate</div></div>
+  </div>
+  <hr class="divider"/>
+  <div class="section-title">1. System Architecture &mdash; Ek Nazar Mein</div>
+  <p>AeroRoute ek <strong>full-stack, real-time web application</strong> hai jisme React (Vite) ka frontend aur FastAPI (Python) ka backend hai. Dono services ek WebSocket channel ke through continuously communicate karte hain jisme har second live drone telemetry stream hoti hai. MongoDB backend persistence ke liye use hota hai.</p>
+  <div class="flow-diagram">
+    <div class="flow-box">&#x1F310; Browser<br/>(React + Vite)</div>
+    <div class="flow-arrow">&hArr; WebSocket</div>
+    <div class="flow-box accent">&#x26A1; FastAPI<br/>(Python)</div>
+    <div class="flow-arrow">&harr;</div>
+    <div class="flow-box green">&#x1F5C4; MongoDB<br/>(Persistence)</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-box" style="background:#1a5276">&#x1F916; Gemini LLM<br/>(Pre-Flight AI)</div>
+  </div>
+  <hr class="divider"/>
+  <div class="section-title">2. Technology Stack</div>
+  <table class="tech-table">
+    <thead><tr><th>Layer</th><th>Technology</th><th>Purpose</th><th>Version</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Frontend Framework</strong></td><td><span class="tag">React 19</span> + <span class="tag">Vite 8</span></td><td>SPA, component tree, routing, hot-reload dev server</td><td>19.2 / 8.3</td></tr>
+      <tr><td><strong>2D Fleet Map</strong></td><td><span class="tag">Leaflet</span> + <span class="tag">react-leaflet</span></td><td>Interactive Mumbai map, drone markers, NFZ polygons, GA route polylines</td><td>1.9.4</td></tr>
+      <tr><td><strong>3D Photorealistic View</strong></td><td><span class="tag">CesiumJS</span> + Google 3D Tiles</td><td>Actual Mumbai buildings/terrain via Google Maps Platform Map Tiles API</td><td>1.146</td></tr>
+      <tr><td><strong>Charts &amp; Analytics</strong></td><td><span class="tag">Recharts</span></td><td>Battery trends, mission statistics, telemetry graphs</td><td>3.10</td></tr>
+      <tr><td><strong>Backend API</strong></td><td><span class="tag">FastAPI</span> + <span class="tag">Uvicorn</span></td><td>REST APIs, WebSocket server, async operations</td><td>Python 3.12</td></tr>
+      <tr><td><strong>ML Model</strong></td><td><span class="tag">scikit-learn</span> (Gradient Boosting)</td><td>Battery drain % prediction given payload, distance, elevation, wind</td><td>1.4+</td></tr>
+      <tr><td><strong>Database</strong></td><td><span class="tag">MongoDB</span> + <span class="tag">Motor</span></td><td>Async persistence for drones, missions, routes, telemetry logs</td><td>7.x</td></tr>
+      <tr><td><strong>LLM Advisor</strong></td><td><span class="tag">Google Gemini</span> / <span class="tag">Groq LLaMA</span></td><td>Pre-flight AI safety verdict with structured JSON analysis</td><td>Gemini 3.8 Flash</td></tr>
+      <tr><td><strong>Icons / UI</strong></td><td><span class="tag">lucide-react</span></td><td>Consistent icon system throughout the dashboard</td><td>1.48</td></tr>
+    </tbody>
+  </table>
+  <div class="page-footer"><span>AeroRoute AI &mdash; Autonomous Drone Delivery Platform</span><span>Page 1 of 4</span><span>Confidential &middot; October 2026</span></div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-text">AeroRoute AI</div>
+    <div class="subtitle">Soft Computing Engine &bull; Page 2 of 4</div>
+  </div>
+  <div class="section-title">3. Soft Computing Engine &mdash; Dil of the System</div>
+  <p>AeroRoute ka core intelligence <code>soft_computing.py</code> module mein rehta hai. Yahan teen AI algorithms mil ke drone delivery ko safe, efficient aur intelligent banate hain: <strong>Genetic Algorithm (route optimization)</strong>, <strong>A* Pathfinding (NFZ avoidance)</strong>, aur <strong>Fuzzy Logic (real-time safety scoring)</strong>.</p>
+  <div class="algo-grid">
+    <div class="algo-card">
+      <div class="algo-title">&#x1F9EC; Genetic Algorithm (GA)</div>
+      <p>Multi-waypoint delivery route ko evolutionary approach se optimize karta hai. Population-based search mein best routes "evolve" hoti hain generations ke through.</p>
+      <ul class="param-list">
+        <li>Population Size: <strong>80 individuals</strong></li>
+        <li>Generations: <strong>120 iterations</strong></li>
+        <li>Crossover Rate: <strong>0.85 (85%)</strong></li>
+        <li>Mutation Rate: <strong>0.18 (18%)</strong></li>
+        <li>Elite Count: <strong>4 (preserved best)</strong></li>
+        <li>Fitness = Distance + NFZ Penalty + Battery Penalty</li>
+        <li>Single-point crossover on waypoint segments</li>
+        <li>Mutation: Shift / Add / Remove intermediate waypoints</li>
+      </ul>
+    </div>
+    <div class="algo-card">
+      <div class="algo-title">&#x1F50D; A* (A-Star) Pathfinding</div>
+      <p>Exact shortest collision-free path nikalta hai Mumbai Red Zones aur weather obstacles avoid karte hue. Dispatch mission mein ye hi primary algorithm use hoti hai.</p>
+      <ul class="param-list">
+        <li>Grid Resolution: <strong>~350m per cell (0.0035&deg;)</strong></li>
+        <li>Connectivity: <strong>8-directional moves</strong></li>
+        <li>Max Iterations: <strong>8,000 nodes</strong></li>
+        <li>Safety Margin: <strong>+0.4 km around NFZ radius</strong></li>
+        <li>Proximity Penalty: Graduated cost near NFZ borders</li>
+        <li>Weather Factor: 1.0x (calm) &rarr; 1.35x (extreme wind)</li>
+        <li>Heuristic: Haversine great-circle distance to goal</li>
+        <li>Direct Line Check: LoS test &rarr; bypass if NFZ-free</li>
+      </ul>
+    </div>
+  </div>
+  <hr class="divider"/>
+  <div class="section-sub">&#x1F4CD; Mumbai No-Fly Zones (NFZ) &mdash; Registered Red Zones</div>
+  <div class="nfz-list">
+    <div class="nfz-item"><div class="name">&#x2708;&#xFE0F; CSMIA Airport Exclusion</div><div class="coords">Center: 19.0896&deg;N, 72.8656&deg;E &middot; Radius: 2.2 km</div></div>
+    <div class="nfz-item"><div class="name">&#x2693; Colaba Naval Dockyard</div><div class="coords">Center: 18.9150&deg;N, 72.8300&deg;E &middot; Radius: 1.5 km</div></div>
+    <div class="nfz-item"><div class="name">&#x2622;&#xFE0F; BARC Trombay Nuclear Facility</div><div class="coords">Center: 19.0060&deg;N, 72.9150&deg;E &middot; Radius: 1.4 km</div></div>
+    <div class="nfz-item"><div class="name">&#x1F6E1;&#xFE0F; Malabar Hill VVIP Corridor</div><div class="coords">Center: 18.9430&deg;N, 72.7950&deg;E &middot; Radius: 0.8 km</div></div>
+  </div>
+  <hr class="divider"/>
+  <div class="section-title">4. Fuzzy Flight Safety Index (FSI)</div>
+  <p>Har drone ka real-time Flight Safety Index (FSI 0&ndash;100) ek <strong>Mamdani-style Fuzzy Inference System</strong> se calculate hota hai. Teen inputs ke fuzzy membership functions define hain (triangular + trapezoidal), 18 IF-THEN rules apply hote hain, aur centroid defuzzification se final FSI score milta hai.</p>
+  <table class="fuzzy-table">
+    <thead><tr><th>Input Variable</th><th>Range</th><th>Fuzzy Sets</th><th>MF Type</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Wind Gust</strong></td><td>0&ndash;30 m/s</td><td>Low &middot; Moderate &middot; High &middot; Extreme</td><td>Trapezoidal + Triangular</td></tr>
+      <tr><td><strong>Battery Level</strong></td><td>0&ndash;100 %</td><td>Critical &middot; Low &middot; Adequate &middot; Full</td><td>Trapezoidal + Triangular</td></tr>
+      <tr><td><strong>Distance to Hub</strong></td><td>0&ndash;20 km</td><td>Near &middot; Mid &middot; Far</td><td>Trapezoidal + Triangular</td></tr>
+      <tr><td><strong>Output: FSI Score</strong></td><td>0&ndash;100</td><td>Danger (15) &middot; Caution (40) &middot; Safe (70) &middot; Optimal (90)</td><td>Singleton Centroid</td></tr>
+    </tbody>
+  </table>
+  <div class="highlight-box purple"><strong>FSI Thresholds:</strong> FSI &ge; 65 &rarr; SAFE (Green) &middot; FSI 35&ndash;64 &rarr; CAUTION (Yellow) &middot; FSI &lt; 35 &rarr; EMERGENCY RTB (Red, auto Return-to-Base command)</div>
+  <hr class="divider"/>
+  <div class="section-title">5. Battery Drain ML Model (Gradient Boosting)</div>
+  <p><code>ml_models.py</code> mein ek <strong>scikit-learn Gradient Boosting Regressor</strong> trained hai jo har mission ke liye battery drain % predict karta hai. 1,500 synthetic training samples use hote hain realistic drone physics ke saath.</p>
+  <div class="algo-grid">
+    <div class="algo-card">
+      <div class="algo-title">&#x1F4CA; Model Features (Inputs)</div>
+      <ul class="param-list">
+        <li>Payload Weight (0.1&ndash;5.0 kg)</li>
+        <li>Elevation Change (&minus;200 to +500 m)</li>
+        <li>Flight Distance (0.5&ndash;25 km)</li>
+        <li>Wind Speed (0&ndash;18 m/s)</li>
+      </ul>
+    </div>
+    <div class="algo-card">
+      <div class="algo-title">&#x2699;&#xFE0F; Model Configuration</div>
+      <ul class="param-list">
+        <li>Estimators: <strong>60 trees</strong></li>
+        <li>Learning Rate: <strong>0.10</strong></li>
+        <li>Max Depth: <strong>4</strong></li>
+        <li>Subsample: <strong>0.85</strong></li>
+        <li>Output: Drain%, Remaining%, Risk Level, &plusmn;CI</li>
+        <li>Persistence: battery_model.pkl (cached on disk)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="page-footer"><span>AeroRoute AI &mdash; Autonomous Drone Delivery Platform</span><span>Page 2 of 4</span><span>Confidential &middot; October 2026</span></div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-text">AeroRoute AI</div>
+    <div class="subtitle">Backend APIs &bull; Database &bull; LLM Advisor &bull; Page 3 of 4</div>
+  </div>
+  <div class="section-title">6. Backend REST API Endpoints (FastAPI)</div>
+  <p><code>main.py</code> &mdash; 1,302 lines ka FastAPI application jisme fleet management, mission dispatch, route optimization, safety evaluation aur real-time telemetry ke liye 12+ endpoints hain. Sabka input Pydantic models se validate hota hai.</p>
+  <table class="api-table">
+    <thead><tr><th>Method</th><th>Endpoint</th><th>Purpose</th><th>Key Logic</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method-badge method-ws">WS</span></td><td>/ws/telemetry</td><td>Live drone telemetry stream (1Hz broadcast)</td><td>WebSocket ConnectionManager, tick-based simulator</td></tr>
+      <tr><td><span class="method-badge method-get">GET</span></td><td>/api/drones</td><td>Saare active drones ki list return karo</td><td>DroneSimulator state &rarr; summary JSON</td></tr>
+      <tr><td><span class="method-badge method-post">POST</span></td><td>/api/drones</td><td>Naya drone fleet mein register karo</td><td>Secret code + MongoDB upsert + WS broadcast</td></tr>
+      <tr><td><span class="method-badge method-del">DEL</span></td><td>/api/drones/{id}</td><td>Drone decommission (secret code required)</td><td>Per-drone code verification + MongoDB purge</td></tr>
+      <tr><td><span class="method-badge method-post">POST</span></td><td>/api/dispatch-mission</td><td>Mission assign karo drone ko, A* route compute</td><td>AStarRouteOptimizer + MongoDB save + broadcast</td></tr>
+      <tr><td><span class="method-badge method-get">GET</span></td><td>/api/missions</td><td>Active + delivered missions history</td><td>In-memory + MongoDB merge, last 50 records</td></tr>
+      <tr><td><span class="method-badge method-post">POST</span></td><td>/api/optimize-route</td><td>GA ya A* se optimal route compute karo</td><td>Algorithm selector (astar/ga) &rarr; waypoints + battery</td></tr>
+      <tr><td><span class="method-badge method-post">POST</span></td><td>/api/astar-route</td><td>Direct A* execution with NFZ avoidance</td><td>8-dir grid, proximity penalty, weather factor</td></tr>
+      <tr><td><span class="method-badge method-post">POST</span></td><td>/api/predict-battery</td><td>ML se battery drain predict karo</td><td>Gradient Boosting pipeline, 4 features, risk level</td></tr>
+      <tr><td><span class="method-badge method-post">POST</span></td><td>/api/fuzzy-safety</td><td>Fuzzy FSI evaluate karo</td><td>Mamdani FIS, 18 rules, centroid defuzzification</td></tr>
+      <tr><td><span class="method-badge method-post">POST</span></td><td>/api/pre-flight-check</td><td>LLM se pre-flight safety analysis</td><td>Gemini/Groq API + deterministic fallback verdict</td></tr>
+      <tr><td><span class="method-badge method-get">GET</span></td><td>/api/no-fly-zones</td><td>Mumbai NFZ data for map rendering</td><td>4 registered Mumbai red zones + coordinates</td></tr>
+    </tbody>
+  </table>
+  <hr class="divider"/>
+  <div class="section-title">7. Database Layer &mdash; MongoDB + Motor</div>
+  <p><code>database.py</code> mein async MongoDB client (Motor) ke through 4 collections manage hoti hain. Connection failure pe gracefully in-memory fallback hota hai &mdash; koi crash nahi.</p>
+  <div class="algo-grid">
+    <div class="algo-card">
+      <div class="algo-title">&#x1F5C4;&#xFE0F; Collections</div>
+      <ul class="param-list">
+        <li><strong>drones</strong> &mdash; Fleet registry, status, battery, GPS coords</li>
+        <li><strong>missions</strong> &mdash; Order IDs, routes, ETA, payload, status</li>
+        <li><strong>routes</strong> &mdash; GA/A* computed route logs with waypoints</li>
+        <li><strong>telemetry_logs</strong> &mdash; Historical flight snapshots</li>
+      </ul>
+    </div>
+    <div class="algo-card">
+      <div class="algo-title">&#x1F517; Key DB Features</div>
+      <ul class="param-list">
+        <li>Connection: localhost:27017 ya env variable</li>
+        <li>Unique Index: drone.id, mission.order_id</li>
+        <li>Timeout: 3000ms serverSelection + connect</li>
+        <li>Fallback: In-memory dict if MongoDB unavailable</li>
+        <li>Upsert Pattern: Drone state sync on every update</li>
+        <li>Limit: Last 50 missions per query</li>
+      </ul>
+    </div>
+  </div>
+  <hr class="divider"/>
+  <div class="section-title">8. LLM Pre-Flight Safety Advisor (Google Gemini)</div>
+  <p><code>llm_advisor.py</code> &mdash; Mission dispatch se pehle ek AI advisor automatically analysis karta hai: payload weight, battery drain, wind conditions aur distance ki values Gemini (ya Groq LLaMA) ko bhejta hai aur structured JSON verdict milta hai.</p>
+  <div class="highlight-box amber"><strong>Supported LLMs:</strong> Primary &mdash; Google Gemini 3.8 Flash (via GEMINI_API_KEY env var). Fallback &mdash; Groq Cloud LLaMA 3.3 70B (via GROQ_API_KEY). Agar dono unavailable hain toh deterministic offline rule-engine automatically activate hoti hai &mdash; koi silent failure nahi.</div>
+  <div class="algo-grid">
+    <div class="algo-card">
+      <div class="algo-title">&#x1F916; Verdict Types</div>
+      <ul class="param-list">
+        <li>CLEARED &mdash; Safe to dispatch</li>
+        <li>CAUTION &mdash; Proceed with monitoring</li>
+        <li>BLOCKED &mdash; Launch banned (overweight/low battery)</li>
+        <li>UNSAFE &mdash; Emergency conditions detected</li>
+      </ul>
+    </div>
+    <div class="algo-card">
+      <div class="algo-title">&#x1F4CB; Analysis Inputs</div>
+      <ul class="param-list">
+        <li>Payload vs Max Payload Kg comparison</li>
+        <li>Current Battery % vs Predicted Drain %</li>
+        <li>Remaining battery after flight estimate</li>
+        <li>Wind gust conditions (m/s)</li>
+        <li>Flight distance (km) &amp; Risk Score 0-100</li>
+      </ul>
+    </div>
+  </div>
+  <div class="highlight-box"><strong>DroneSimulator:</strong> Backend mein ek built-in real-time simulator bhi hai jo actual drones ki GPS movement, battery depletion, wind gust events, RTB triggers, aur parachute deployment simulate karta hai &mdash; WS telemetry stream ke through 1 Hz pe broadcast hoti hai.</div>
+  <div class="page-footer"><span>AeroRoute AI &mdash; Autonomous Drone Delivery Platform</span><span>Page 3 of 4</span><span>Confidential &middot; October 2026</span></div>
+</div>
+
+<!-- PAGE 4 -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo-text">AeroRoute AI</div>
+    <div class="subtitle">Frontend Architecture &bull; 3D View &bull; Features &bull; Page 4 of 4</div>
+  </div>
+  <div class="section-title">9. Frontend Components Architecture (React + Vite)</div>
+  <p>16 React components, App.jsx ke through orchestrated hain. Navigation ek <strong>custom URL-synced routing system</strong> se handle hoti hai (bina React Router ke). Main app state: <code>currentView</code> &mdash; landing / dispatch / dashboard / missions / live-drones. Live telemetry ek <strong>custom WebSocket hook</strong> se manage hoti hai jo reconnect + fallback bhi handle karta hai.</p>
+  <table class="comp-table">
+    <thead><tr><th>Component</th><th>View / Purpose</th><th>Key Features</th></tr></thead>
+    <tbody>
+      <tr><td><span class="comp-name">LandingPage.jsx</span></td><td>Entry Screen</td><td>Mumbai drone cinematic bg, CTA buttons &rarr; Dispatch + 2D Map navigation</td></tr>
+      <tr><td><span class="comp-name">MissionDispatchPage.jsx</span></td><td>Mission Command Center</td><td>Drone selector, destination pin, payload input, A*/GA toggle, LLM pre-flight check</td></tr>
+      <tr><td><span class="comp-name">FleetMap.jsx</span></td><td>2D Interactive Map</td><td>Leaflet map, live drone markers, NFZ polygons (dashed red), GA route polylines</td></tr>
+      <tr><td><span class="comp-name">TelemetryHUD.jsx</span></td><td>Right Panel HUD</td><td>Per-drone live battery, GPS, speed, altitude, FSI score, warning alerts</td></tr>
+      <tr><td><span class="comp-name">LiveDronesPage.jsx</span></td><td>Fleet Status Page</td><td>Card grid for all drones, real-time metrics, Track on Map, Google 3D View button</td></tr>
+      <tr><td><span class="comp-name">MissionsDeliveriesPage.jsx</span></td><td>Mission Logbook</td><td>Active + Delivered mission table, order IDs, ETA, distance, NFZ avoided list</td></tr>
+      <tr><td><span class="comp-name">Google3DView.jsx</span></td><td>3D Photorealistic View</td><td>CesiumJS + Google 3D Tiles, 4 camera modes, drone tracking, mission route corridor</td></tr>
+      <tr><td><span class="comp-name">VerticalNavRail.jsx</span></td><td>Sidebar Navigation</td><td>Icon-based nav rail, collapsible/expandable, active view indicator</td></tr>
+      <tr><td><span class="comp-name">EmergencyControls.jsx</span></td><td>Emergency Panel</td><td>Simulate Storm, Force RTB (all drones), Reset Fleet with confirmation</td></tr>
+      <tr><td><span class="comp-name">AIPredictionsPage.jsx</span></td><td>AI Analytics</td><td>Battery prediction input form, risk analysis, Recharts visualization, ML results</td></tr>
+    </tbody>
+  </table>
+  <hr class="divider"/>
+  <div class="section-title">10. Google Photorealistic 3D View (Google3DView.jsx)</div>
+  <p>Ek dedicated full-screen 3D view component hai jisme CesiumJS + Google Maps Platform ka <strong>Map Tiles API (Photorealistic 3D Tiles)</strong> use hota hai &mdash; real Mumbai ki actual buildings, rooftops, roads aur terrain real-world satellite data se stream hoti hain.</p>
+  <div class="feature-grid">
+    <div class="feature-pill"><div class="emoji">&#x1F3D9;&#xFE0F;</div><div><div class="pill-title">Tilted Aerial View</div><div class="pill-desc">Default 38&deg; pitch camera, Mumbai cityscape fully visible with real 3D buildings</div></div></div>
+    <div class="feature-pill"><div class="emoji">&#x1F681;</div><div><div class="pill-title">Drone Follow Mode</div><div class="pill-desc">Camera locked behind drone, real-time position sync from live WebSocket telemetry</div></div></div>
+    <div class="feature-pill"><div class="emoji">&#x1F3AF;</div><div><div class="pill-title">FPV Nose Camera</div><div class="pill-desc">First-person drone perspective, 6&deg; pitch nose cam with drone heading alignment</div></div></div>
+    <div class="feature-pill"><div class="emoji">&#x1F504;</div><div><div class="pill-title">360&deg; Orbit View</div><div class="pill-desc">Smooth auto-rotating orbit animation around the drone position at set pitch</div></div></div>
+    <div class="feature-pill"><div class="emoji">&#x1F6E3;&#xFE0F;</div><div><div class="pill-title">3D Mission Corridor</div><div class="pill-desc">GA-optimized flight path rendered as elevated glowing 3D polyline above terrain</div></div></div>
+    <div class="feature-pill"><div class="emoji">&#x26A1;</div><div><div class="pill-title">Flight Simulation</div><div class="pill-desc">Virtual flight mode &mdash; drone animates along planned corridor if live data unavailable</div></div></div>
+  </div>
+  <div class="highlight-box"><strong>Google Cloud Setup (3D Tiles ke liye):</strong> Google Cloud Console &rarr; Project banao &rarr; Billing enable karo &rarr; <strong>Map Tiles API enable</strong> karo &rarr; API Key banao &rarr; Key ko <code>frontend/.env</code> mein <code>VITE_GOOGLE_MAPS_API_KEY=AIzaSy...</code> set karo. Google Cloud har month <strong>$200 free credit</strong> deta hai.</div>
+  <hr class="divider"/>
+  <div class="section-title">11. Deployment &amp; Running Locally</div>
+  <div class="algo-grid">
+    <div class="algo-card">
+      <div class="algo-title">&#x2699;&#xFE0F; Backend (FastAPI)</div>
+      <ul class="param-list">
+        <li>Port: <strong>8000</strong> (Uvicorn)</li>
+        <li>Command: uvicorn main:app --reload --port 8000</li>
+        <li>Env: .env &mdash; MONGODB_URL, GEMINI_API_KEY, GROQ_API_KEY</li>
+        <li>Auto-startup: ML model train + MongoDB connect + telemetry loop</li>
+      </ul>
+    </div>
+    <div class="algo-card">
+      <div class="algo-title">&#x1F310; Frontend (Vite + React)</div>
+      <ul class="param-list">
+        <li>Port: <strong>5173</strong> (Vite Dev Server)</li>
+        <li>Command: npm run dev</li>
+        <li>Proxy: /api &rarr; 8000, /ws &rarr; 8000 (WS)</li>
+        <li>Env: VITE_GOOGLE_MAPS_API_KEY, VITE_CESIUM_ION_TOKEN</li>
+        <li>Build: npm run build &rarr; dist/ folder</li>
+      </ul>
+    </div>
+  </div>
+  <div class="highlight-box" style="font-size:10.5px; margin-top:10px;"><strong>Project Summary:</strong> AeroRoute AI ek production-grade autonomous drone delivery platform hai jisme Genetic Algorithm aur A* se route optimization, Fuzzy Logic se real-time flight safety scoring, Gradient Boosting ML se battery prediction, Google Gemini LLM se pre-flight advisory, CesiumJS se photorealistic 3D Mumbai view, MongoDB se persistent data management, aur WebSocket se 1Hz live telemetry &mdash; sab ek premium dark-themed React dashboard mein integrate hain.</div>
+  <div class="page-footer"><span>AeroRoute AI &mdash; Autonomous Drone Delivery Platform</span><span>Page 4 of 4</span><span>Confidential &middot; October 2026</span></div>
+</div>
+</body>
+</html>

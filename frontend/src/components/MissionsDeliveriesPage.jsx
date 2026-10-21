@@ -136,7 +136,7 @@ export default function MissionsDeliveriesPage({ onGoToDispatch }) {
       {/* KPI Metric Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: 16,
         marginBottom: 24,
       }}>
@@ -179,7 +179,20 @@ export default function MissionsDeliveriesPage({ onGoToDispatch }) {
           </div>
         </div>
 
-        {/* Metric 4 */}
+        {/* Metric 4 — Aborted */}
+        <div className="glass-card" style={{ padding: '16px 20px', borderLeft: '3px solid var(--brand-warning)' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+            Aborted Missions
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 900, fontFamily: 'JetBrains Mono', color: 'var(--brand-warning)' }}>
+            {stats.aborted_count ?? 0}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--brand-warning)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Shield size={12} /> RTB / Parachute Events
+          </div>
+        </div>
+
+        {/* Metric 5 */}
         <div className="glass-card" style={{ padding: '16px 20px', borderLeft: '3px solid #a78bfa' }}>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
             Delivery Success Rate
@@ -434,8 +447,8 @@ export default function MissionsDeliveriesPage({ onGoToDispatch }) {
                   <th style={{ padding: '12px 16px' }}>Payload</th>
                   <th style={{ padding: '12px 16px' }}>Flight Distance</th>
                   <th style={{ padding: '12px 16px' }}>Final Battery</th>
-                  <th style={{ padding: '12px 16px' }}>Delivered Time</th>
-                  <th style={{ padding: '12px 16px' }}>Status</th>
+                  <th style={{ padding: '12px 16px' }}>Timestamp</th>
+                  <th style={{ padding: '12px 16px' }}>Outcome</th>
                 </tr>
               </thead>
               <tbody>
@@ -472,12 +485,69 @@ export default function MissionsDeliveriesPage({ onGoToDispatch }) {
                       {dm.final_battery_pct}%
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 11 }}>
-                      {dm.delivered_at || 'Recent'}
+                      {dm.delivered_at || dm.aborted_at || 'Recent'}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span className="status-chip DELIVERING" style={{ fontSize: 9.5 }}>
-                        ✓ DELIVERED
-                      </span>
+                      {dm.status === 'DELIVERED' && (
+                        <span style={{
+                          fontSize: 9.5,
+                          fontWeight: 800,
+                          padding: '3px 9px',
+                          borderRadius: 6,
+                          background: 'rgba(6,255,165,0.15)',
+                          border: '1px solid rgba(6,255,165,0.35)',
+                          color: 'var(--brand-accent)',
+                          letterSpacing: '0.4px',
+                          textTransform: 'uppercase',
+                        }}>
+                          ✓ DELIVERED
+                        </span>
+                      )}
+                      {dm.status === 'ABORTED_RTB' && (
+                        <span style={{
+                          fontSize: 9.5,
+                          fontWeight: 800,
+                          padding: '3px 9px',
+                          borderRadius: 6,
+                          background: 'rgba(251,191,36,0.15)',
+                          border: '1px solid rgba(251,191,36,0.35)',
+                          color: 'var(--brand-warning)',
+                          letterSpacing: '0.4px',
+                          textTransform: 'uppercase',
+                        }}>
+                          ↩ RTB ABORT
+                        </span>
+                      )}
+                      {dm.status === 'PARACHUTE_ABORT' && (
+                        <span style={{
+                          fontSize: 9.5,
+                          fontWeight: 800,
+                          padding: '3px 9px',
+                          borderRadius: 6,
+                          background: 'rgba(255,61,87,0.15)',
+                          border: '1px solid rgba(255,61,87,0.35)',
+                          color: 'var(--brand-danger)',
+                          letterSpacing: '0.4px',
+                          textTransform: 'uppercase',
+                        }}>
+                          ⛑ PARACHUTE
+                        </span>
+                      )}
+                      {!['DELIVERED', 'ABORTED_RTB', 'PARACHUTE_ABORT'].includes(dm.status) && (
+                        <span style={{
+                          fontSize: 9.5,
+                          fontWeight: 800,
+                          padding: '3px 9px',
+                          borderRadius: 6,
+                          background: 'rgba(100,100,100,0.15)',
+                          border: '1px solid rgba(100,100,100,0.3)',
+                          color: 'var(--text-muted)',
+                          letterSpacing: '0.4px',
+                          textTransform: 'uppercase',
+                        }}>
+                          {dm.status || 'UNKNOWN'}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

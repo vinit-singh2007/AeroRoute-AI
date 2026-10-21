@@ -7,7 +7,9 @@ import {
   Package,
   ChevronLeft,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Map,
+  Activity
 } from 'lucide-react';
 
 export default function VerticalNavRail({
@@ -20,6 +22,8 @@ export default function VerticalNavRail({
   onNavigateView,
   currentView,
   dronesCount = 3,
+  isTelemetryCollapsed = false,
+  onExpandTelemetry,
 }) {
   return (
     <aside style={{
@@ -163,107 +167,65 @@ export default function VerticalNavRail({
               onClick: () => onNavigateView('missions'),
             },
           ].map(item => (
-            <button
+            <NavItem key={item.id} item={item} isCollapsed={isCollapsed} />
+          ))}
+        </nav>
+
+        {/* ── DIVIDER ── */}
+        <div style={{
+          margin: '14px 4px 10px',
+          height: 1,
+          background: 'linear-gradient(90deg, transparent, rgba(0,212,255,0.25), transparent)',
+        }} />
+
+        {/* ── SECONDARY NAV: Fleet Map & Live Telemetry ── */}
+        {!isCollapsed && (
+          <div style={{
+            fontSize: 9.5,
+            fontWeight: 800,
+            letterSpacing: '1.5px',
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            padding: '0 8px 8px 8px',
+          }}>
+            FLEET OPS
+          </div>
+        )}
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[
+            {
+              id: 'fleet-map',
+              label: 'Fleet Map',
+              tooltip: 'Fleet Map — Live Mumbai Air Corridors',
+              icon: <Map size={16} />,
+              isActive: currentView === 'dashboard',
+              onClick: () => {
+                onNavigateView('dashboard');
+                onSelectItem('overview');
+              },
+            },
+            {
+              id: 'live-telemetry',
+              label: 'Live Telemetry',
+              tooltip: 'Live Telemetry Stream HUD',
+              icon: <Activity size={16} />,
+              // Active ONLY when on dashboard AND telemetry panel is expanded
+              isActive: currentView === 'dashboard' && !isTelemetryCollapsed,
+              // When sidebar is collapsed, hide the active pointer for this item
+              hidePointerWhenCollapsed: true,
+              onClick: () => {
+                onNavigateView('dashboard');
+                onSelectItem('overview');
+                onExpandTelemetry?.();
+              },
+            },
+          ].map(item => (
+            <NavItem
               key={item.id}
-              onClick={item.onClick}
-              id={`nav-item-${item.id}`}
-              title={item.tooltip || item.label}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                width: '100%',
-                padding: isCollapsed ? '10px 0' : '10px 12px',
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
-                borderRadius: 10,
-                border: item.isActive ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid transparent',
-                background: item.isActive
-                  ? 'linear-gradient(90deg, rgba(0, 212, 255, 0.16) 0%, rgba(0, 212, 255, 0.04) 100%)'
-                  : 'transparent',
-                color: item.isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                transition: 'all 160ms ease',
-                position: 'relative',
-                outline: 'none',
-              }}
-              onMouseEnter={e => {
-                if (!item.isActive) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                  e.currentTarget.style.color = '#fff';
-                }
-              }}
-              onMouseLeave={e => {
-                if (!item.isActive) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }
-              }}
-            >
-              {/* Active Indicator Glow Pill on Far Left */}
-              {item.isActive && (
-                <span style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: '20%',
-                  bottom: '20%',
-                  width: 3.5,
-                  borderRadius: '0 4px 4px 0',
-                  background: 'var(--brand-primary)',
-                  boxShadow: '0 0 10px var(--brand-primary)',
-                }} />
-              )}
-
-              <span style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: item.isActive ? 'var(--brand-primary)' : 'inherit',
-                filter: item.isActive ? 'drop-shadow(0 0 6px rgba(0,212,255,0.6))' : 'none',
-              }}>
-                {item.icon}
-              </span>
-
-              {!isCollapsed && (
-                <span style={{
-                  fontSize: 12,
-                  fontWeight: item.isActive ? 700 : 500,
-                  letterSpacing: '0.2px',
-                  flex: 1,
-                  textAlign: 'left',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {item.label}
-                </span>
-              )}
-
-              {/* Badge if present */}
-              {!isCollapsed && item.badge && (
-                <span style={{
-                  fontSize: 9.5,
-                  fontWeight: 800,
-                  padding: '2px 6px',
-                  borderRadius: 10,
-                  background: item.isActive ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.08)',
-                  color: item.isActive ? 'var(--brand-primary)' : 'var(--text-muted)',
-                }}>
-                  {item.badge}
-                </span>
-              )}
-
-              {/* Collapsed dot for badge */}
-              {isCollapsed && item.badge && (
-                <span style={{
-                  position: 'absolute',
-                  top: 6,
-                  right: 8,
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: 'var(--brand-primary)',
-                  boxShadow: '0 0 6px var(--brand-primary)',
-                }} />
-              )}
-            </button>
+              item={item}
+              isCollapsed={isCollapsed}
+              hidePointer={isCollapsed && item.hidePointerWhenCollapsed}
+            />
           ))}
         </nav>
       </div>
@@ -303,5 +265,111 @@ export default function VerticalNavRail({
       </div>
 
     </aside>
+  );
+}
+
+// ── Reusable Nav Item Button ──
+function NavItem({ item, isCollapsed, hidePointer = false }) {
+  return (
+    <button
+      onClick={item.onClick}
+      id={`nav-item-${item.id}`}
+      title={item.tooltip || item.label}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        width: '100%',
+        padding: isCollapsed ? '10px 0' : '10px 12px',
+        justifyContent: isCollapsed ? 'center' : 'flex-start',
+        borderRadius: 10,
+        border: item.isActive ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid transparent',
+        background: item.isActive
+          ? 'linear-gradient(90deg, rgba(0, 212, 255, 0.16) 0%, rgba(0, 212, 255, 0.04) 100%)'
+          : 'transparent',
+        color: item.isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
+        cursor: 'pointer',
+        transition: 'all 160ms ease',
+        position: 'relative',
+        outline: 'none',
+      }}
+      onMouseEnter={e => {
+        if (!item.isActive) {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+          e.currentTarget.style.color = '#fff';
+        }
+      }}
+      onMouseLeave={e => {
+        if (!item.isActive) {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }
+      }}
+    >
+      {/* Active Indicator Glow Pill — hidden when hidePointer is true */}
+      {item.isActive && !hidePointer && (
+        <span style={{
+          position: 'absolute',
+          left: 0,
+          top: '20%',
+          bottom: '20%',
+          width: 3.5,
+          borderRadius: '0 4px 4px 0',
+          background: 'var(--brand-primary)',
+          boxShadow: '0 0 10px var(--brand-primary)',
+        }} />
+      )}
+
+      <span style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: item.isActive ? 'var(--brand-primary)' : 'inherit',
+        filter: item.isActive ? 'drop-shadow(0 0 6px rgba(0,212,255,0.6))' : 'none',
+      }}>
+        {item.icon}
+      </span>
+
+      {!isCollapsed && (
+        <span style={{
+          fontSize: 12,
+          fontWeight: item.isActive ? 700 : 500,
+          letterSpacing: '0.2px',
+          flex: 1,
+          textAlign: 'left',
+          whiteSpace: 'nowrap',
+        }}>
+          {item.label}
+        </span>
+      )}
+
+      {/* Badge if present */}
+      {!isCollapsed && item.badge && (
+        <span style={{
+          fontSize: 9.5,
+          fontWeight: 800,
+          padding: '2px 6px',
+          borderRadius: 10,
+          background: item.isActive ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.08)',
+          color: item.isActive ? 'var(--brand-primary)' : 'var(--text-muted)',
+        }}>
+          {item.badge}
+        </span>
+      )}
+
+      {/* Collapsed dot for badge */}
+      {isCollapsed && item.badge && (
+        <span style={{
+          position: 'absolute',
+          top: 6,
+          right: 8,
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: 'var(--brand-primary)',
+          boxShadow: '0 0 6px var(--brand-primary)',
+        }} />
+      )}
+    </button>
   );
 }

@@ -96,6 +96,7 @@ export default function DispatchPanel({
   const [newDroneModel,       setNewDroneModel]       = useState('OctoCopter HeavyLifter');
   const [newDronePayload,     setNewDronePayload]     = useState(4.5);
   const [newDroneBattery,     setNewDroneBattery]     = useState(100);
+  const [newDroneSpeed,       setNewDroneSpeed]       = useState(65);
   const [newDroneSecretCode,  setNewDroneSecretCode]  = useState('');
   const [addLoading,          setAddLoading]          = useState(false);
 
@@ -236,7 +237,7 @@ export default function DispatchPanel({
   );
 
   const aiVerdictMessage = llmResult?.analysis || (
-    isOverweight ? `Package mass (${payloadWeight.toFixed(1)} kg) exceeds ${selectedDrone.id} limit (${maxPayload.toFixed(1)} kg). Choose a heavier drone or reduce mass.` :
+    isOverweight ? `Package mass (${payloadWeight.toFixed(1)} kg) exceeds ${selectedDrone?.id || 'drone'} limit (${maxPayload.toFixed(1)} kg). Choose a heavier drone or reduce mass.` :
     isBatteryCritical ? `Current battery (${currentBattery.toFixed(0)}%) too low for ${flightDistanceKm.toFixed(1)} km delivery. Predicted drain ${predictedDrainPct}% leaves only ${remainingBatteryOnArrival}%. Need >= ${(predictedDrainPct + 20)}% charge.` :
     isBatteryTight ? `Mission feasible but leaves tight ${remainingBatteryOnArrival}% reserve upon delivery. Drone should RTB immediately post-drop.` :
     `AI validated: Safe payload ratio (${((payloadWeight/maxPayload)*100).toFixed(0)}%) & healthy ${remainingBatteryOnArrival}% battery reserve upon arrival.`
@@ -260,6 +261,7 @@ export default function DispatchPanel({
         model: newDroneModel.trim(),
         max_payload_kg: parseFloat(newDronePayload),
         battery_pct: parseFloat(newDroneBattery),
+        max_speed_kmh: parseFloat(newDroneSpeed),
         secret_code: newDroneSecretCode.trim(),
       });
       toast(`Drone ${newDroneId.toUpperCase()} registered & secured with Secret Code!`, 'success');
@@ -326,7 +328,7 @@ export default function DispatchPanel({
 
     setDispatchLoading(true);
     try {
-      // Automatic GA route solve in background for map rendering
+      // Automatic A* shortest route solve in background for map rendering
       const route = await optimizeRoute({
         origin:               { lat: MUMBAI_HUB.lat, lng: MUMBAI_HUB.lng },
         destination:          { lat: dest.lat,       lng: dest.lng       },
@@ -334,11 +336,12 @@ export default function DispatchPanel({
         wind_speed_ms:        5.0,
         max_battery_drain_pct: 80.0,
         intermediate_stops:   [],
+        algorithm:            'astar',
       });
       onRouteResult?.(route);
 
-      // Dispatch mission to backend
-      await dispatchMission({
+      // Dispatch mission to backend with A* obstacle avoidance
+      const dispatchRes = await dispatchMission({
         drone_id: selectedDroneId,
         destination: { lat: dest.lat, lng: dest.lng },
         destination_name: dest.name,
@@ -346,6 +349,10 @@ export default function DispatchPanel({
         agent_name: dispatcherName,
         payload_weight_kg: payloadWeight,
       });
+
+      if (dispatchRes?.route) {
+        onRouteResult?.(dispatchRes.route);
+      }
 
       setActiveMission({
         orderId,
@@ -356,7 +363,9 @@ export default function DispatchPanel({
         timestamp: new Date().toLocaleTimeString(),
       });
 
-      toast(`🚀 Order ${orderId} Assigned to ${selectedDroneId}! En route to ${dest.name}`, 'success');
+      const avoided = dispatchRes?.route?.redzones_avoided || route?.redzones_avoided || [];
+      const avoidedText = avoided.length > 0 ? ` (Bypassed: ${avoided.join(', ')})` : '';
+      toast(`🚀 Order ${orderId} Assigned to ${selectedDroneId}! A* Shortest Route calculated${avoidedText}`, 'success');
       generateNewOrderId();
     } catch (err) {
       toast(`Dispatch assignment failed: ${err.message}`, 'error');
@@ -527,9 +536,9 @@ export default function DispatchPanel({
                 />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
               <div>
-                <label className="form-label">Max Payload (kg)</label>
+                <label className="form-label" style={{ fontSize: 10 }}>Payload (kg)</label>
                 <input
                   type="number"
                   step="0.1"
@@ -541,7 +550,7 @@ export default function DispatchPanel({
                 />
               </div>
               <div>
-                <label className="form-label">Battery %</label>
+                <label className="form-label" style={{ fontSize: 10 }}>Battery %</label>
                 <input
                   type="number"
                   min="20"
@@ -549,6 +558,18 @@ export default function DispatchPanel({
                   className="form-input"
                   value={newDroneBattery}
                   onChange={e => setNewDroneBattery(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: 10 }}>Max Speed</label>
+                <input
+                  type="number"
+                  min="20"
+                  max="160"
+                  className="form-input"
+                  placeholder="km/h"
+                  value={newDroneSpeed}
+                  onChange={e => setNewDroneSpeed(e.target.value)}
                 />
               </div>
             </div>

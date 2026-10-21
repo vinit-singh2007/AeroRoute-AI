@@ -4,8 +4,6 @@ import {
   Send,
   Navigation,
   Package,
-  PlusCircle,
-  Trash2,
   MapPin,
   X,
   FileText,
@@ -18,7 +16,6 @@ import {
   Bot,
   RefreshCw,
   ArrowLeft,
-  Check,
   Lock,
   Radio
 } from 'lucide-react';
@@ -105,6 +102,7 @@ export default function MissionDispatchPage({
   const [newDroneModel,       setNewDroneModel]       = useState('OctoCopter HeavyLifter');
   const [newDronePayload,     setNewDronePayload]     = useState(4.5);
   const [newDroneBattery,     setNewDroneBattery]     = useState(100);
+  const [newDroneSpeed,       setNewDroneSpeed]       = useState(65);
   const [newDroneSecretCode,  setNewDroneSecretCode]  = useState('');
   const [addLoading,          setAddLoading]          = useState(false);
 
@@ -257,6 +255,7 @@ export default function MissionDispatchPage({
         model: newDroneModel.trim(),
         max_payload_kg: parseFloat(newDronePayload),
         battery_pct: parseFloat(newDroneBattery),
+        max_speed_kmh: parseFloat(newDroneSpeed),
         secret_code: newDroneSecretCode.trim(),
       });
       toast(`Drone ${newDroneId.toUpperCase()} registered & secured with Secret Code!`, 'success');
@@ -309,7 +308,7 @@ export default function MissionDispatchPage({
 
     setDispatchLoading(true);
     try {
-      // Calculate GA optimal path from Midpoint Hub
+      // Calculate A* optimal shortest path from Midpoint Hub avoiding Red Zones & Weather
       const route = await optimizeRoute({
         origin:               { lat: currentHub.lat, lng: currentHub.lng },
         destination:          { lat: dest.lat,       lng: dest.lng       },
@@ -317,11 +316,12 @@ export default function MissionDispatchPage({
         wind_speed_ms:        5.0,
         max_battery_drain_pct: 90.0,
         intermediate_stops:   [],
+        algorithm:            'astar',
       });
       onRouteResult?.(route);
 
-      // Dispatch mission
-      await dispatchMission({
+      // Dispatch mission with A* shortest path navigation
+      const dispatchRes = await dispatchMission({
         drone_id: selectedDroneId,
         destination: { lat: dest.lat, lng: dest.lng },
         destination_name: dest.name,
@@ -330,6 +330,10 @@ export default function MissionDispatchPage({
         payload_weight_kg: payloadWeight,
       });
 
+      if (dispatchRes?.route) {
+        onRouteResult?.(dispatchRes.route);
+      }
+
       setLastDispatched({
         orderId,
         droneId: selectedDroneId,
@@ -337,7 +341,9 @@ export default function MissionDispatchPage({
         time: new Date().toLocaleTimeString(),
       });
 
-      toast(`🚀 Order ${orderId} Assigned to ${selectedDroneId}! Launching to ${dest.name}`, 'success');
+      const avoidedZones = dispatchRes?.route?.redzones_avoided || route?.redzones_avoided || [];
+      const avoidedText = avoidedZones.length > 0 ? ` (Bypassed: ${avoidedZones.join(', ')})` : '';
+      toast(`🚀 Order ${orderId} Assigned to ${selectedDroneId}! A* Shortest Route calculated${avoidedText}`, 'success');
       generateNewOrderId();
 
       // Stay on dispatch page — user can assign more drones
@@ -368,7 +374,7 @@ export default function MissionDispatchPage({
     }}>
       {/* ── TOP HEADER: Left: Mission Dispatch | Right: Move to Dashboard & Delivery Logs ── */}
       <div style={{
-        padding: '12px 28px',
+        padding: '16px 36px',
         background: 'rgba(8, 16, 33, 0.95)',
         borderBottom: '1px solid var(--border-subtle)',
         display: 'flex',
@@ -377,33 +383,33 @@ export default function MissionDispatchPage({
         flexShrink: 0,
       }}>
         {/* Left: Sirf Dispatch Mission */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>🚀</span>
-          <h1 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 26 }}>🚀</span>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
             Mission Dispatch
           </h1>
         </div>
 
         {/* Right: Move to Dashboard (back button) aur Delivery Logs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
             onClick={onNavigateToDashboard}
             className="btn btn-ghost btn-sm"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '6px 14px',
-              borderRadius: 6,
+              gap: 7,
+              padding: '8px 18px',
+              borderRadius: 8,
               borderColor: 'rgba(0, 212, 255, 0.35)',
               color: 'var(--brand-primary)',
               fontWeight: 700,
-              fontSize: 11.5,
+              fontSize: 13,
               cursor: 'pointer',
             }}
             id="btn-move-to-dashboard"
           >
-            <ArrowLeft size={14} /> Move to Dashboard
+            <ArrowLeft size={15} /> Move to Dashboard
           </button>
 
           <button
@@ -412,16 +418,16 @@ export default function MissionDispatchPage({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '6px 14px',
-              borderRadius: 6,
+              gap: 7,
+              padding: '8px 18px',
+              borderRadius: 8,
               fontWeight: 700,
-              fontSize: 11.5,
+              fontSize: 13,
               cursor: 'pointer',
             }}
             id="btn-delivery-logs"
           >
-            <Package size={14} /> Delivery Logs
+            <Package size={15} /> Delivery Logs
           </button>
         </div>
       </div>
@@ -430,17 +436,17 @@ export default function MissionDispatchPage({
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '24px 32px',
+        padding: '14px 28px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
       }}>
         <div style={{
           width: '100%',
-          maxWidth: 1200,
+          maxWidth: 1400,
           display: 'flex',
           flexDirection: 'column',
-          gap: 20,
+          gap: 12,
         }}>
 
           {/* ── ACTIVE DISPATCH SUCCESS BANNER ── */}
@@ -499,25 +505,26 @@ export default function MissionDispatchPage({
           {/* 2-Column Balanced Form Grid */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
-            gap: 20,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
+            gap: 14,
+            alignItems: 'start',
           }}>
 
             {/* ── COLUMN 1: Order & Destination ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
               {/* Section 1: Delivery Assignment */}
-              <div className="panel-section" style={{ margin: 0, padding: 18, background: 'rgba(5, 12, 24, 0.95)', borderRadius: 10, border: '1px solid var(--border-subtle)' }}>
-                <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800 }}>
+              <div className="panel-section" style={{ margin: 0, padding: '14px 18px', background: 'rgba(5, 12, 24, 0.95)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+                <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800 }}>
                     <FileText size={14} color="var(--brand-primary)" /> Delivery Order & Dispatcher
                   </span>
-                  <span style={{ fontSize: 9.5, color: 'var(--brand-primary)', background: 'rgba(0,212,255,0.1)', padding: '3px 8px', borderRadius: 4, fontWeight: 700 }}>
+                  <span style={{ fontSize: 10, color: 'var(--brand-primary)', background: 'rgba(0,212,255,0.1)', padding: '3px 8px', borderRadius: 5, fontWeight: 700 }}>
                     MMR MIDPOINT BASE (KANDIVALI)
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10, marginBottom: 12 }}>
                   <div>
                     <label className="form-label" style={{ fontSize: 11 }}>Delivery Agent</label>
                     <input
@@ -526,18 +533,20 @@ export default function MissionDispatchPage({
                       value={dispatcherName}
                       onChange={e => setDispatcherName(e.target.value)}
                       placeholder="Agent Name"
+                      style={{ fontSize: 12, padding: '7px 10px' }}
                     />
                   </div>
                   <div>
                     <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
                       <span>Order ID</span>
-                      <RotateCw size={11} style={{ cursor: 'pointer', color: 'var(--brand-primary)' }} onClick={generateNewOrderId} title="Generate new code" />
+                      <RotateCw size={12} style={{ cursor: 'pointer', color: 'var(--brand-primary)' }} onClick={generateNewOrderId} title="Generate new code" />
                     </label>
                     <input
                       type="text"
                       className="form-input"
                       value={orderId}
                       onChange={e => setOrderId(e.target.value)}
+                      style={{ fontSize: 12, padding: '7px 10px' }}
                     />
                   </div>
                 </div>
@@ -556,7 +565,7 @@ export default function MissionDispatchPage({
                         onClick={() => setCargoPriority(p.id)}
                         className={`btn btn-sm ${cargoPriority === p.id ? 'btn-primary' : 'btn-ghost'}`}
                         style={{
-                          fontSize: 11,
+                          fontSize: 12,
                           padding: '7px 10px',
                           borderColor: cargoPriority === p.id ? 'var(--brand-primary)' : 'var(--border-subtle)',
                           fontWeight: cargoPriority === p.id ? 800 : 500,
@@ -571,18 +580,18 @@ export default function MissionDispatchPage({
               </div>
 
               {/* Section 2: Destination & Cargo Weight */}
-              <div className="panel-section" style={{ margin: 0, padding: 18, background: 'rgba(5, 12, 24, 0.95)', borderRadius: 10, border: '1px solid var(--border-subtle)' }}>
-                <div className="panel-title" style={{ fontSize: 13, fontWeight: 800, marginBottom: 14 }}>
+              <div className="panel-section" style={{ margin: 0, padding: '14px 18px', background: 'rgba(5, 12, 24, 0.95)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+                <div className="panel-title" style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>
                   <MapPin size={14} color="var(--brand-primary)" /> Assign Destination & Cargo Mass
                 </div>
 
-                <div className="form-group" style={{ marginBottom: 12 }}>
+                <div className="form-group" style={{ marginBottom: 10 }}>
                   <label className="form-label" style={{ fontSize: 11 }}>Delivery Destination Hub (Virar to South Bombay)</label>
                   <select
                     className="form-select"
                     value={destinationId}
                     onChange={e => setDestinationId(e.target.value)}
-                    style={{ fontSize: 12, padding: '8px 10px' }}
+                    style={{ fontSize: 12, padding: '7px 10px' }}
                   >
                     {MUMBAI_DESTINATIONS.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
@@ -591,7 +600,7 @@ export default function MissionDispatchPage({
                 </div>
 
                 {destinationId === 'CUSTOM' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                     <div>
                       <label className="form-label" style={{ fontSize: 10.5 }}>Latitude (°N)</label>
                       <input
@@ -620,7 +629,7 @@ export default function MissionDispatchPage({
                 <div className="form-group" style={{ margin: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <label className="form-label" style={{ margin: 0, fontSize: 11 }}>Package Payload Mass</label>
-                    <span className="text-mono" style={{ fontSize: 13, fontWeight: 800, color: isOverweight ? 'var(--brand-danger)' : 'var(--brand-primary)' }}>
+                    <span className="text-mono" style={{ fontSize: 14, fontWeight: 800, color: isOverweight ? 'var(--brand-danger)' : 'var(--brand-primary)' }}>
                       {payloadWeight.toFixed(1)} kg {isOverweight ? '⚠️ (Exceeds Limit)' : ''}
                     </span>
                   </div>
@@ -631,9 +640,9 @@ export default function MissionDispatchPage({
                     step="0.1"
                     value={payloadWeight}
                     onChange={e => setPayloadWeight(parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: 'var(--brand-primary)', cursor: 'pointer' }}
+                    style={{ width: '100%', accentColor: 'var(--brand-primary)', cursor: 'pointer', height: 5 }}
                   />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: 'var(--text-muted)', marginTop: 5 }}>
                     <span>0.5 kg (Light)</span>
                     <span>4.0 kg (Standard)</span>
                     <span>8.0 kg (Heavy)</span>
@@ -641,113 +650,231 @@ export default function MissionDispatchPage({
                 </div>
               </div>
 
-            </div>
+              {/* Section 3: Mission Route Intel */}
+              <div style={{
+                margin: 0,
+                padding: '11px 16px',
+                background: 'rgba(5, 12, 24, 0.95)',
+                borderRadius: 12,
+                border: '1px solid rgba(0,212,255,0.2)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
+                  <span style={{ fontSize: 14 }}>🛰️</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mission Route Intel</span>
+                </div>
 
-            {/* ── COLUMN 2: Airframe & AI Pre-flight Check ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-              {/* Section 3: Drone Airframe Selection (Single Drone Delete with Secret Code) */}
-              <div className="panel-section" style={{ margin: 0, padding: 18, background: 'rgba(5, 12, 24, 0.95)', borderRadius: 10, border: '1px solid var(--border-subtle)' }}>
-                <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800 }}>
-                    <Navigation size={14} color="var(--brand-primary)" /> Select Fleet Airframe ({drones.length} active)
-                  </span>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      style={{ padding: '4px 10px', fontSize: 10.5, borderColor: 'rgba(0,212,255,0.4)', color: 'var(--brand-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                      onClick={() => setShowAddDrone(true)}
-                    >
-                      <PlusCircle size={11} /> + Add Drone
-                    </button>
+                {/* Hub → Destination route bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 9, fontSize: 11 }}>
+                  <div style={{ background: 'rgba(0,212,255,0.15)', border: '1px solid rgba(0,212,255,0.35)', borderRadius: 6, padding: '4px 8px', color: 'var(--brand-primary)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    📍 MMR Hub
+                  </div>
+                  <div style={{ flex: 1, height: 2, background: 'linear-gradient(90deg, rgba(0,212,255,0.6), rgba(6,255,165,0.6))', borderRadius: 2, position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap', background: '#030a17', padding: '0 4px' }}>
+                      {flightDistanceKm.toFixed(1)} km
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(6,255,165,0.12)', border: '1px solid rgba(6,255,165,0.35)', borderRadius: 6, padding: '4px 8px', color: '#06ffa5', fontWeight: 700, fontSize: 10, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    🎯 {resolvedDest?.name?.split(' ').slice(0, 3).join(' ') || 'Destination'}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                {/* 4 Stats Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '7px 6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 2 }}>ETA</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--brand-primary)' }}>
+                      {Math.ceil(flightDistanceKm / 65 * 60)} min
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '7px 6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 2 }}>CRUISE SPD</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--brand-accent)' }}>
+                      {selectedDrone?.max_speed_kmh || 65} km/h
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '7px 6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 2 }}>PRIORITY</div>
+                    <div style={{ fontSize: 11.5, fontWeight: 800, color: cargoPriority === 'MEDICAL' ? 'var(--brand-danger)' : cargoPriority === 'EXPRESS' ? 'var(--brand-primary)' : 'var(--text-secondary)' }}>
+                      {cargoPriority === 'MEDICAL' ? '🚑' : cargoPriority === 'EXPRESS' ? '⚡' : '📦'} {cargoPriority}
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '7px 6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 2 }}>ALGORITHM</div>
+                    <div style={{ fontSize: 10.5, fontWeight: 800, color: '#a78bfa' }}>A* PATH</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* ── COLUMN 2: Airframe & AI Pre-flight Check ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+              {/* Section 3: Drone Airframe Selection */}
+              <div className="panel-section" style={{ margin: 0, padding: '12px 16px', background: 'rgba(5, 12, 24, 0.95)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+                <div className="panel-title" style={{ marginBottom: 10 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800 }}>
+                    <Navigation size={15} color="var(--brand-primary)" /> Select Fleet Airframe ({drones.length} active)
+                  </span>
+                </div>
+
+                <div style={{ marginBottom: 10 }}>
                   <select
                     className="form-select"
                     value={selectedDroneId}
                     onChange={e => setSelectedDroneId(e.target.value)}
-                    style={{ flex: 1, fontSize: 12, padding: '8px 10px' }}
+                    style={{ width: '100%', fontSize: 12.5, padding: '8px 12px' }}
                   >
                     {drones.map(d => {
                       const isDelivering = d.status === 'DELIVERING';
                       const isReturning = d.status === 'RETURNING';
-                      const statusTag = isDelivering ? `⚡ EN ROUTE (${d.order_id || 'MISSION'})` : isReturning ? '🔄 RETURNING' : '🟢 READY / STANDBY';
+                      const isBusy = isDelivering || isReturning;
+                      const statusTag = isDelivering
+                        ? `🔴 IN USE — EN ROUTE (${d.order_id || 'MISSION'})`
+                        : isReturning
+                        ? '🔴 IN USE — RETURNING'
+                        : '🟢 READY / STANDBY';
                       return (
-                        <option key={d.id} value={d.id}>
-                          {d.id} — {d.model} • {d.battery_pct?.toFixed(0)}% Bat [{statusTag}]
+                        <option key={d.id} value={d.id} disabled={isBusy}>
+                          {isBusy ? '🔒 ' : ''}{d.id} — {d.model} • {d.battery_pct?.toFixed(0)}% Bat [{statusTag}]
                         </option>
                       );
                     })}
                   </select>
-                  {selectedDroneId && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      title={`Decommission ${selectedDroneId} (Requires Secret Code)`}
-                      onClick={() => {
-                        setDroneToDelete(selectedDroneId);
-                        setDeleteSecretCode('');
-                      }}
-                      style={{ padding: '0 12px', color: 'var(--brand-danger)', borderColor: 'rgba(255,61,87,0.35)', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
                 </div>
 
                 {selectedDrone && (
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 8,
-                    padding: '10px 14px',
+                    padding: '8px 12px',
                     borderRadius: 8,
                     background: 'rgba(8,15,31,0.6)',
                     border: '1px solid var(--border-subtle)',
-                    fontSize: 11,
                     textAlign: 'center',
                   }}>
                     <div>
-                      <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>UNIT ID</div>
-                      <strong style={{ color: 'var(--text-primary)', fontSize: 12 }}>{selectedDrone.id}</strong>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>UNIT ID</div>
+                      <strong style={{ color: 'var(--text-primary)', fontSize: 13 }}>{selectedDrone.id}</strong>
                     </div>
                     <div>
-                      <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>MAX PAYLOAD</div>
-                      <strong style={{ color: 'var(--brand-primary)', fontSize: 12 }}>{selectedDrone.max_payload_kg} kg</strong>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>MAX SPEED</div>
+                      <strong style={{ color: 'var(--brand-accent)', fontSize: 13 }}>
+                        {selectedDrone.max_speed_kmh != null ? `${selectedDrone.max_speed_kmh} km/h` : selectedDrone.speed_kmh != null && selectedDrone.speed_kmh > 0 ? `${Number(selectedDrone.speed_kmh).toFixed(0)} km/h` : '65 km/h'}
+                      </strong>
                     </div>
                     <div>
-                      <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>BATTERY</div>
-                      <strong style={{ color: selectedDrone.battery_pct > 50 ? 'var(--brand-accent)' : 'var(--brand-warning)', fontSize: 12 }}>
-                        {selectedDrone.battery_pct?.toFixed(0)}%
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>MAX PAYLOAD</div>
+                      <strong style={{ color: 'var(--brand-primary)', fontSize: 13 }}>
+                        {selectedDrone.max_payload_kg != null ? `${selectedDrone.max_payload_kg} kg` : selectedDrone.payload_weight_kg != null ? `${selectedDrone.payload_weight_kg} kg` : '4.0 kg'}
+                      </strong>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>BATTERY</div>
+                      <strong style={{ color: (selectedDrone.battery_pct ?? 100) > 50 ? 'var(--brand-accent)' : 'var(--brand-warning)', fontSize: 13 }}>
+                        {selectedDrone.battery_pct != null ? `${Number(selectedDrone.battery_pct).toFixed(0)}%` : '100%'}
                       </strong>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Section 4: AI Pre-Flight Safety Advisor (Gemini 3.8 Flash) */}
+              {/* Section 4a: ML Battery Prediction Model */}
               <div className="panel-section" style={{
-                background: aiVerdictBg,
-                border: `1px solid ${aiVerdictBorder}`,
-                borderRadius: 10,
-                padding: 18,
+                background: 'rgba(5, 12, 24, 0.95)',
+                border: '1px solid rgba(139, 92, 246, 0.35)',
+                borderRadius: 12,
+                padding: '12px 16px',
                 margin: 0,
-                boxShadow: `0 0 16px ${aiVerdictBorder}`,
+                boxShadow: '0 0 16px rgba(139,92,246,0.1)',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                {/* ML Card Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Sparkles size={15} color={aiVerdictColor} />
-                    <span style={{ fontSize: 12, fontWeight: 800, color: aiVerdictColor, textTransform: 'uppercase' }}>
-                      AI Pre-Flight Safety Interlock
+                    <span style={{ fontSize: 15 }}>🧠</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      ML Battery Prediction
                     </span>
                     <span style={{
                       fontSize: 9.5,
                       fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: 4,
+                      padding: '2px 7px',
+                      borderRadius: 5,
+                      background: 'rgba(139,92,246,0.15)',
+                      color: '#a78bfa',
+                      border: '1px solid rgba(139,92,246,0.3)',
+                    }}>
+                      Gradient Boosting
+                    </span>
+                  </div>
+                  <span style={{
+                    fontSize: 9.5,
+                    color: 'var(--text-muted)',
+                    fontStyle: 'italic',
+                  }}>
+                    scikit-learn · 60 estimators
+                  </span>
+                </div>
+
+                {/* ML Metrics Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, margin: 0 }}>
+                  <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
+                    <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>DISTANCE</div>
+                    <div className="text-mono" style={{ fontSize: 14, fontWeight: 800, color: '#c4b5fd' }}>
+                      {flightDistanceKm.toFixed(1)} km
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
+                    <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>PRED. DRAIN</div>
+                    <div className="text-mono" style={{ fontSize: 14, fontWeight: 800, color: '#f59e0b' }}>
+                      ~{predictedDrainPct}%
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
+                    <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>ON ARRIVAL</div>
+                    <div className="text-mono" style={{
+                      fontSize: 14,
+                      fontWeight: 800,
+                      color: remainingBatteryOnArrival < 20 ? 'var(--brand-danger)' : remainingBatteryOnArrival < 35 ? 'var(--brand-warning)' : '#06ffa5'
+                    }}>
+                      {remainingBatteryOnArrival}%
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
+                    <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>PAYLOAD</div>
+                    <div className="text-mono" style={{
+                      fontSize: 14,
+                      fontWeight: 800,
+                      color: isOverweight ? 'var(--brand-danger)' : '#06ffa5'
+                    }}>
+                      {payloadWeight.toFixed(1)}/{maxPayload.toFixed(0)}kg
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 4b: LLM Safety Advisor */}
+              <div className="panel-section" style={{
+                background: aiVerdictBg,
+                border: `1px solid ${aiVerdictBorder}`,
+                borderRadius: 12,
+                padding: '12px 16px',
+                margin: 0,
+                boxShadow: `0 0 16px ${aiVerdictBorder}`,
+              }}>
+                {/* LLM Card Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 9 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Sparkles size={15} color={aiVerdictColor} />
+                    <span style={{ fontSize: 13, fontWeight: 800, color: aiVerdictColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      LLM Safety Advisor
+                    </span>
+                    <span style={{
+                      fontSize: 9.5,
+                      fontWeight: 700,
+                      padding: '2px 7px',
+                      borderRadius: 5,
                       background: 'rgba(0, 212, 255, 0.12)',
                       color: 'var(--brand-primary)',
                       border: '1px solid rgba(0, 212, 255, 0.3)',
@@ -755,26 +882,25 @@ export default function MissionDispatchPage({
                       alignItems: 'center',
                       gap: 4,
                     }}>
-                      <Bot size={11} />
+                      <Bot size={10} />
                       {llmLoading ? 'Analyzing...' : '✨ Gemini 3.8 Flash'}
                     </span>
                   </div>
-
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button
                       type="button"
                       onClick={fetchLlmSafetyCheck}
-                      title="Re-run LLM Flight Safety Evaluation"
+                      title="Re-run LLM Safety Evaluation"
                       className="btn btn-ghost btn-sm"
-                      style={{ padding: '3px 8px', fontSize: 10, color: 'var(--text-muted)', cursor: 'pointer' }}
+                      style={{ padding: '2px 7px', fontSize: 10.5, color: 'var(--text-muted)', cursor: 'pointer' }}
                     >
                       <RefreshCw size={11} className={llmLoading ? 'spin-anim' : ''} />
                     </button>
                     <span style={{
-                      fontSize: 10,
+                      fontSize: 10.5,
                       fontWeight: 800,
-                      padding: '3px 8px',
-                      borderRadius: 6,
+                      padding: '2px 9px',
+                      borderRadius: 5,
                       background: aiVerdictBg,
                       color: aiVerdictColor,
                       border: `1px solid ${aiVerdictBorder}`,
@@ -784,129 +910,59 @@ export default function MissionDispatchPage({
                   </div>
                 </div>
 
-                {/* Metrics Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 12 }}>
-                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 6px', borderRadius: 6, textAlign: 'center' }}>
-                    <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>DISTANCE</div>
-                    <div className="text-mono" style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--brand-primary)' }}>
-                      {flightDistanceKm.toFixed(1)} km
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 6px', borderRadius: 6, textAlign: 'center' }}>
-                    <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>PRED. DRAIN</div>
-                    <div className="text-mono" style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--brand-secondary)' }}>
-                      ~{predictedDrainPct}%
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 6px', borderRadius: 6, textAlign: 'center' }}>
-                    <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>ON ARRIVAL</div>
-                    <div className="text-mono" style={{
-                      fontSize: 12.5,
-                      fontWeight: 800,
-                      color: remainingBatteryOnArrival < 20 ? 'var(--brand-danger)' : remainingBatteryOnArrival < 35 ? 'var(--brand-warning)' : 'var(--brand-accent)'
-                    }}>
-                      {remainingBatteryOnArrival}%
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 6px', borderRadius: 6, textAlign: 'center' }}>
-                    <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>PAYLOAD</div>
-                    <div className="text-mono" style={{
-                      fontSize: 12.5,
-                      fontWeight: 800,
-                      color: isOverweight ? 'var(--brand-danger)' : 'var(--brand-accent)'
-                    }}>
-                      {payloadWeight.toFixed(1)}/{maxPayload.toFixed(0)}k
-                    </div>
-                  </div>
-                </div>
-
-                {/* Verdict Box */}
+                {/* LLM Verdict Box */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 10,
-                  fontSize: 11,
+                  fontSize: 12,
                   lineHeight: '1.45',
                   color: aiVerdictColor,
-                  padding: '10px 12px',
-                  borderRadius: 6,
+                  padding: '9px 12px',
+                  borderRadius: 8,
                   background: 'rgba(0,0,0,0.35)',
+                  marginBottom: llmResult?.recommendation ? 8 : 0,
                 }}>
                   {isOverweight ? (
-                    <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
                   ) : isBatteryCritical ? (
-                    <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: 2 }} />
                   ) : isBatteryTight ? (
-                    <Zap size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <Zap size={16} style={{ flexShrink: 0, marginTop: 2 }} />
                   ) : (
-                    <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 2 }} />
                   )}
                   <div style={{ flex: 1 }}>
-                    <strong>{aiVerdictLabel}</strong>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: 10.5, marginTop: 3 }}>
+                    <strong style={{ fontSize: 12.5 }}>{aiVerdictLabel}</strong>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: 11.5, marginTop: 2 }}>
                       {aiVerdictMessage}
                     </div>
                   </div>
                 </div>
-              </div>
 
-            </div>
-          </div>
-
-          {/* ── FLEET HOT-STANDBY UNITS ROW ── */}
-          <div style={{
-            padding: '14px 18px',
-            background: 'rgba(8, 16, 33, 0.75)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-            flexWrap: 'wrap',
-          }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', flexShrink: 0 }}>
-              Fleet Hot-Standby Units ({drones.length}):
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flex: 1 }}>
-              {drones.map(d => {
-                const isSelected = d.id === selectedDroneId;
-                return (
-                  <div
-                    key={d.id}
-                    onClick={() => setSelectedDroneId(d.id)}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: 8,
-                      background: isSelected ? 'rgba(0, 212, 255, 0.14)' : 'rgba(255, 255, 255, 0.03)',
-                      border: isSelected ? '1px solid var(--brand-primary)' : '1px solid var(--border-subtle)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      cursor: 'pointer',
-                      transition: 'all 150ms ease',
-                    }}
-                  >
-                    <div style={{ fontSize: 12, fontWeight: 800, color: isSelected ? 'var(--brand-primary)' : 'var(--text-primary)' }}>
-                      {d.id}
-                    </div>
-                    <div style={{ fontSize: 11, color: d.battery_pct > 50 ? 'var(--brand-accent)' : 'var(--brand-warning)', fontFamily: 'JetBrains Mono', fontWeight: 700 }}>
-                      {d.battery_pct?.toFixed(0)}%
-                    </div>
-                    <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
-                      {d.status}
+                {/* LLM Recommendation */}
+                {llmResult?.recommendation && (
+                  <div style={{
+                    background: 'rgba(0,0,0,0.25)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: 7,
+                    padding: '7px 12px',
+                    fontSize: 11,
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 6,
+                  }}>
+                    <span style={{ fontSize: 12, flexShrink: 0 }}>💡</span>
+                    <span>
+                      <strong style={{ color: aiVerdictColor }}>Recommendation: </strong>
+                      {llmResult.recommendation}
                     </span>
                   </div>
-                );
-              })}
-            </div>
-
-            {lastDispatched && (
-              <div style={{ fontSize: 11, color: 'var(--brand-accent)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Check size={14} /> Dispatched {lastDispatched.orderId} to {lastDispatched.destinationName} ({lastDispatched.time})
+                )}
               </div>
-            )}
+
+            </div>
           </div>
 
           {/* ── BIG GLOWING LAUNCH MISSION BUTTON ── */}
@@ -914,8 +970,8 @@ export default function MissionDispatchPage({
             type="button"
             className="btn btn-primary"
             style={{
-              padding: '18px 24px',
-              fontSize: 14.5,
+              padding: '14px 24px',
+              fontSize: 15,
               fontWeight: 900,
               display: 'flex',
               alignItems: 'center',
@@ -929,8 +985,8 @@ export default function MissionDispatchPage({
               borderRadius: 10,
               cursor: isBlocked || dispatchLoading ? 'not-allowed' : 'pointer',
               opacity: isBlocked ? 0.75 : 1,
-              boxShadow: isBlocked ? 'none' : '0 6px 30px rgba(0, 212, 255, 0.45)',
-              letterSpacing: '0.8px',
+              boxShadow: isBlocked ? 'none' : '0 6px 26px rgba(0, 212, 255, 0.4)',
+              letterSpacing: '1px',
               textTransform: 'uppercase',
             }}
             onClick={handleAssignAndDispatch}
@@ -1004,9 +1060,9 @@ export default function MissionDispatchPage({
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
               <div>
-                <label className="form-label">Payload (kg)</label>
+                <label className="form-label" style={{ fontSize: 10 }}>Payload (kg)</label>
                 <input
                   type="number"
                   step="0.1"
@@ -1019,7 +1075,7 @@ export default function MissionDispatchPage({
                 />
               </div>
               <div>
-                <label className="form-label">Battery (%)</label>
+                <label className="form-label" style={{ fontSize: 10 }}>Battery (%)</label>
                 <input
                   type="number"
                   min="1"
@@ -1027,6 +1083,19 @@ export default function MissionDispatchPage({
                   className="form-input"
                   value={newDroneBattery}
                   onChange={e => setNewDroneBattery(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: 10 }}>Max Speed</label>
+                <input
+                  type="number"
+                  min="20"
+                  max="160"
+                  className="form-input"
+                  placeholder="km/h"
+                  value={newDroneSpeed}
+                  onChange={e => setNewDroneSpeed(e.target.value)}
                   required
                 />
               </div>

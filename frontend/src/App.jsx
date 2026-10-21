@@ -29,8 +29,7 @@ import MissionsDeliveriesPage from './components/MissionsDeliveriesPage';
 import PredictionsPanel from './components/PredictionsPanel';
 import LiveDronesPage from './components/LiveDronesPage';
 import VerticalNavRail from './components/VerticalNavRail';
-import CesiumDroneTracker from './components/CesiumDroneTracker';
-import DroneCity3D from './components/DroneCity3D';
+import Google3DView from './components/Google3DView';
 import { ToastContainer } from './components/Toast';
 import { useTelemetry } from './hooks/useTelemetry';
 import { getDatabaseStatus } from './services/api';
@@ -58,30 +57,11 @@ function NavBar({ lastUpdate, currentView, onViewChange }) {
       <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => onViewChange('landing')}>
         <div className="nav-logo-icon">✈️</div>
         <div>
-          <div className="nav-logo-text">AeroRoute</div>
-          <div className="nav-logo-sub">Mumbai Drone Dispatch Platform</div>
+          <div className="nav-logo-text">Delivr-X</div>
+
         </div>
       </div>
 
-      {/* Main Navigation Tab: Live Fleet Map & Telemetry */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button
-          onClick={() => onViewChange('dashboard')}
-          className={`btn btn-sm ${currentView === 'dashboard' ? 'btn-primary' : 'btn-ghost'}`}
-          style={{
-            fontSize: 11,
-            fontWeight: currentView === 'dashboard' ? 800 : 500,
-            padding: '5px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            borderRadius: 6,
-          }}
-          id="nav-tab-dashboard"
-        >
-          <Radio size={12} /> Live Fleet Map & Telemetry
-        </button>
-      </div>
 
       {/* Right Side: Only Time Stamp */}
       <div className="nav-status-bar">
@@ -98,8 +78,10 @@ export default function App() {
   const {
     drones,
     hub,
+    weather,
     connected,
     lastUpdate,
+    refreshFleet,
     simulateStorm,
     forceRTB,
     resetFleet,
@@ -117,6 +99,15 @@ export default function App() {
   const [isTelemetryCollapsed, setIsTelemetryCollapsed] = useState(false);
   const [dbStatus, setDbStatus] = useState(null);
   const [tracked3DDroneId, setTracked3DDroneId] = useState(null);
+  const [is3DView, setIs3DView] = useState(false);
+
+  // Filter only drones currently in motion (airborne)
+  const motionDrones = useMemo(() => {
+    return drones.filter(d =>
+      ['DELIVERING', 'RETURNING', 'IN_FLIGHT', 'RTB'].includes(d.status) ||
+      (Number(d.speed_kmh) > 0 && d.status !== 'STANDBY' && d.status !== 'IDLE' && d.status !== 'PARACHUTE_DEPLOYED')
+    );
+  }, [drones]);
 
   const tracked3DDrone = useMemo(() => {
     if (!tracked3DDroneId) return null;
@@ -196,12 +187,17 @@ export default function App() {
     };
   }, []);
 
-  // Auto-select first drone once telemetry stream populates, or clear if fleet is empty
+  // Auto-select first in-motion drone or first available drone once telemetry stream populates
   useEffect(() => {
     if (drones.length === 0) {
       if (selectedDroneId !== null) setSelectedDroneId(null);
-    } else if (!selectedDroneId || !drones.some(d => d.id === selectedDroneId)) {
-      setSelectedDroneId(drones[0].id);
+    } else {
+      const motionDrones = drones.filter(d => ['IN_FLIGHT', 'DELIVERING', 'RETURNING', 'RTB'].includes(d.status));
+      if (motionDrones.length > 0 && (!selectedDroneId || !motionDrones.some(d => d.id === selectedDroneId))) {
+        setSelectedDroneId(motionDrones[0].id);
+      } else if (!selectedDroneId || !drones.some(d => d.id === selectedDroneId)) {
+        setSelectedDroneId(drones[0].id);
+      }
     }
   }, [drones, selectedDroneId]);
 
@@ -228,9 +224,9 @@ export default function App() {
         {/* View 1: Landing Page */}
         {currentView === 'landing' ? (
           <LandingPage
-            onLaunchDashboard={() => navigateView('dashboard')}
-            onOpenPredictions={() => navigateView('missions')}
-            onOpenMissions={() => navigateView('missions')}
+            onLaunchDashboard={() => navigateView('dispatch')}
+            onOpenPredictions={() => navigateView('dashboard')}
+            onOpenMissions={() => navigateView('dashboard')}
             activeDronesCount={drones.length}
           />
         ) : (
@@ -258,6 +254,8 @@ export default function App() {
               onNavigateView={navigateView}
               currentView={currentView}
               dronesCount={drones.length}
+              isTelemetryCollapsed={isTelemetryCollapsed}
+              onExpandTelemetry={() => setIsTelemetryCollapsed(false)}
             />
 
             {/* ── RIGHT VIEWPORT: Active View Page (Flex 1) ── */}
@@ -335,63 +333,14 @@ export default function App() {
                         ))}
                       </div>
 
+
                       {/* Mumbai Fleet Active */}
                       <div className="map-chip">
                         <div className="pulse-dot" />
                         Fleet Active ({drones.length})
                       </div>
 
-                      {/* Active Missions Count */}
-                      <div className="map-chip" style={{
-                        borderColor: drones.some(d => d.status === 'DELIVERING') ? 'rgba(6,255,165,0.45)' : 'var(--border-subtle)',
-                        color: drones.some(d => d.status === 'DELIVERING') ? 'var(--brand-accent)' : 'var(--text-muted)'
-                      }}>
-                        <span style={{
-                          display: 'inline-block',
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          background: drones.some(d => d.status === 'DELIVERING') ? '#06ffa5' : '#64748b',
-                          boxShadow: drones.some(d => d.status === 'DELIVERING') ? '0 0 8px #06ffa5' : 'none'
-                        }} />
-                        Delivering: {drones.filter(d => d.status === 'DELIVERING').length}
-                      </div>
 
-                      {/* Quick Dispatch Shortcut */}
-                      <button
-                        onClick={() => navigateView('dispatch')}
-                        id="map-btn-dispatch"
-                        title="Assign new delivery drone mission"
-                        style={{
-                          background: 'rgba(0, 212, 255, 0.15)',
-                          border: '1px solid rgba(0, 212, 255, 0.45)',
-                          color: '#00d4ff',
-                          borderRadius: 20,
-                          padding: '4px 11px',
-                          fontSize: 10.5,
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          backdropFilter: 'blur(10px)',
-                          transition: 'all 120ms ease',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        <Send size={11} /> + Assign Drone
-                      </button>
-
-                      {mapPinnedDest && typeof mapPinnedDest.lat === 'number' && typeof mapPinnedDest.lng === 'number' && (
-                        <div className="map-chip" style={{ borderColor: 'rgba(6,255,165,0.4)', color: 'var(--brand-accent)' }}>
-                          🎯 Target: {mapPinnedDest.lat.toFixed(3)}, {mapPinnedDest.lng.toFixed(3)}
-                        </div>
-                      )}
-                      {routeResult && (
-                        <div className="map-chip" style={{ borderColor: 'rgba(0,212,255,0.4)', color: 'var(--brand-primary)' }}>
-                          ✦ GA Optimal Route
-                        </div>
-                      )}
                     </div>
 
                     <FleetMap
@@ -439,6 +388,48 @@ export default function App() {
                         </div>
                       ))}
                     </div>
+                    {/* Floating Expand button over map when no drones are in motion and strip is hidden */}
+                    {isTelemetryCollapsed && motionDrones.length === 0 && (
+                      <button
+                        onClick={() => setIsTelemetryCollapsed(false)}
+                        id="floating-expand-telemetry-btn"
+                        title="Expand Live Telemetry Stream"
+                        style={{
+                          position: 'absolute',
+                          top: 14,
+                          right: 14,
+                          zIndex: 500,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '8px 14px',
+                          borderRadius: 8,
+                          background: 'rgba(8, 15, 31, 0.88)',
+                          backdropFilter: 'blur(16px)',
+                          border: '1.5px solid rgba(0, 212, 255, 0.45)',
+                          color: 'var(--brand-primary)',
+                          fontSize: 10,
+                          fontWeight: 800,
+                          letterSpacing: '0.8px',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 212, 255, 0.2)',
+                          transition: 'all 150ms ease',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'rgba(0, 212, 255, 0.18)';
+                          e.currentTarget.style.color = '#fff';
+                          e.currentTarget.style.borderColor = 'var(--brand-primary)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'rgba(8, 15, 31, 0.88)';
+                          e.currentTarget.style.color = 'var(--brand-primary)';
+                          e.currentTarget.style.borderColor = 'rgba(0, 212, 255, 0.45)';
+                        }}
+                      >
+                        <ChevronLeft size={14} />
+                        <span>EXPAND</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* ── RIGHT PANEL: Live Telemetry Rail (Collapsed Strip or Expanded HUD) ── */}
@@ -448,10 +439,10 @@ export default function App() {
                     minHeight: '100vh',
                     maxHeight: '100vh',
                     borderRadius: 0,
-                    width: isTelemetryCollapsed ? 68 : 350,
-                    minWidth: isTelemetryCollapsed ? 68 : 350,
-                    maxWidth: isTelemetryCollapsed ? 68 : 350,
-                    borderLeft: '1px solid var(--border-subtle)',
+                    width: !isTelemetryCollapsed ? 350 : motionDrones.length > 0 ? 68 : 0,
+                    minWidth: !isTelemetryCollapsed ? 350 : motionDrones.length > 0 ? 68 : 0,
+                    maxWidth: !isTelemetryCollapsed ? 350 : motionDrones.length > 0 ? 68 : 0,
+                    borderLeft: (!isTelemetryCollapsed || motionDrones.length > 0) ? '1px solid var(--border-subtle)' : 'none',
                     overflow: 'hidden',
                     transition: 'width 240ms cubic-bezier(0.4, 0, 0.2, 1)',
                     display: 'flex',
@@ -515,7 +506,7 @@ export default function App() {
                           FLEET
                         </div>
 
-                        {/* Vertical Drones List */}
+                        {/* Vertical Drones List — ONLY drones currently in motion */}
                         <div style={{
                           flex: 1,
                           overflowY: 'auto',
@@ -524,15 +515,18 @@ export default function App() {
                           flexDirection: 'column',
                           gap: 8,
                         }}>
-                          {drones.map(d => {
+                          {motionDrones.map(d => {
                             const isSelected = d.id === selectedDroneId;
                             const shortName = d.id.replace('BOM-00', 'BOM-').replace('BOM-0', 'BOM-');
 
-                            // Condition: Red = RTB/Critical, Yellow = Caution, Green = Safe/Optimal
-                            const isRed = d.status === 'RTB' || d.battery_pct < 20 || (typeof d.fsi === 'number' && d.fsi < 35);
-                            const isYellow = !isRed && (d.battery_pct < 50 || (typeof d.fsi === 'number' && d.fsi < 65) || d.action_status === 'REROUTE_RECOMMENDED');
+                            // Condition: Red = Hazard / RTB / Parachute / Critical, Yellow = Normal Returning / Caution, Green = Safe/Optimal
+                            const isEmergencyRtb = d.status === 'RTB' || d.emergency_rtb === true;
+                            const isDanger = d.status === 'PARACHUTE_DEPLOYED' || d.battery_pct < 25 || (typeof d.fsi === 'number' && d.fsi < 40) || d.wind_gust_ms > 15 || d.action_status === 'CRITICAL';
+                            const isRed = isEmergencyRtb || isDanger;
+                            const isNormalReturning = d.status === 'RETURNING' && !isEmergencyRtb;
+                            const isYellow = !isRed && (isNormalReturning || d.battery_pct < 50 || (typeof d.fsi === 'number' && d.fsi < 65) || d.action_status === 'WARNING' || d.action_status === 'CAUTION' || d.action_status === 'REROUTE_RECOMMENDED' || d.wind_gust_ms > 10);
                             const statusColor = isRed ? '#ff3d57' : isYellow ? '#fbbf24' : '#06ffa5';
-                            const statusTitle = isRed ? 'Condition: Critical / RTB' : isYellow ? 'Condition: Caution' : 'Condition: Optimal / Safe';
+                            const statusTitle = isRed ? (isEmergencyRtb ? 'Condition: Emergency RTB' : 'Condition: Flight Hazard / Danger') : isNormalReturning ? 'Condition: Returning to Base (Mission Completed)' : isYellow ? 'Condition: Caution' : 'Condition: Optimal / Safe';
 
                             return (
                               <div
@@ -701,6 +695,7 @@ export default function App() {
                             drones={drones}
                             selectedDroneId={selectedDroneId}
                             onDroneSelect={setSelectedDroneId}
+                            weather={weather}
                           />
                         </div>
                       </>
@@ -717,7 +712,7 @@ export default function App() {
                   onRouteResult={setRouteResult}
                   onNavigateToDashboard={() => navigateView('dashboard')}
                   onNavigateToMissions={() => navigateView('missions')}
-                  onRefreshFleet={resetFleet}
+                  onRefreshFleet={refreshFleet}
                 />
               )}
 
@@ -727,10 +722,14 @@ export default function App() {
                   drones={drones}
                   onTrackOnMap={(droneId) => {
                     setSelectedDroneId(droneId);
+                    navigateView('dashboard');
+                  }}
+                  onTrackIn3D={(droneId) => {
+                    setSelectedDroneId(droneId);
                     setTracked3DDroneId(droneId);
                   }}
                   onGoToDispatch={() => navigateView('dispatch')}
-                  onRefreshFleet={resetFleet}
+                  onRefreshFleet={refreshFleet}
                 />
               )}
 
@@ -745,18 +744,20 @@ export default function App() {
         )}
       </div>
 
-      {/* ── PRIMARY: Three.js 3D City Drone Navigator ── */}
-      {tracked3DDrone && (
-        <DroneCity3D
-          drone={tracked3DDrone}
-          onClose={() => setTracked3DDroneId(null)}
+      {/* ── Google Maps Photorealistic 3D View ── */}
+      {(is3DView || tracked3DDroneId) && (
+        <Google3DView
+          drone={tracked3DDrone || drones.find(d => d.id === selectedDroneId) || drones[0]}
           allDrones={drones}
+          hub={hub}
+          routeResult={routeResult}
+          onClose={() => {
+            setIs3DView(false);
+            setTracked3DDroneId(null);
+          }}
           onSelectDrone={(droneId) => {
             setSelectedDroneId(droneId);
             setTracked3DDroneId(droneId);
-          }}
-          onSwitchToCesium={() => {
-            // Cesium fallback available if user has Google Maps API key
           }}
         />
       )}
