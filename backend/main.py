@@ -143,12 +143,14 @@ class PreFlightCheckRequest(BaseModel):
     drone_model: Optional[str] = "Phantom-Mumbai X7"
     current_battery_pct: float = Field(ge=0.0, le=100.0)
     max_payload_kg: float = Field(ge=0.1, le=10.0)
+    max_speed_kmh: Optional[float] = 65.0
     payload_weight_kg: float = Field(ge=0.1, le=10.0)
     flight_distance_km: float = Field(ge=0.1, le=100.0)
     predicted_drain_pct: float = Field(default=25.0, ge=0.0, le=100.0)
     remaining_battery_pct: float = Field(default=75.0, ge=0.0, le=100.0)
     destination_name: Optional[str] = "Mumbai Delivery Point"
     wind_gust_ms: Optional[float] = 5.0
+    priority_tier: Optional[str] = "STANDARD"
 
 
 # ===========================================================================
@@ -479,11 +481,11 @@ class DroneSimulator:
     """Simulates a drone flying between two points with live telemetry (Mumbai)."""
 
     DEFAULT_FLEET = [
-        {"id": "BOM-001", "model": "Phantom-Mumbai X7",   "max_payload_kg": 3.5, "secret_code": "AERO-001"},
-        {"id": "BOM-002", "model": "Falcon-Marine Lite",   "max_payload_kg": 2.5, "secret_code": "AERO-002"},
-        {"id": "BOM-003", "model": "Eagle-Harbor Pro",     "max_payload_kg": 5.0, "secret_code": "AERO-003"},
-        {"id": "BOM-004", "model": "SkyRaider Cargo",      "max_payload_kg": 4.5, "secret_code": "AERO-004"},
-        {"id": "BOM-005", "model": "AeroTitan Heavy",      "max_payload_kg": 6.0, "secret_code": "AERO-005"},
+        {"id": "BOM-001", "model": "Phantom-Mumbai X7",   "max_payload_kg": 3.5, "max_speed_kmh": 70.0, "secret_code": "AERO-001"},
+        {"id": "BOM-002", "model": "Falcon-Marine Lite",   "max_payload_kg": 2.5, "max_speed_kmh": 85.0, "secret_code": "AERO-002"},
+        {"id": "BOM-003", "model": "Eagle-Harbor Pro",     "max_payload_kg": 5.0, "max_speed_kmh": 60.0, "secret_code": "AERO-003"},
+        {"id": "BOM-004", "model": "SkyRaider Cargo",      "max_payload_kg": 4.5, "max_speed_kmh": 65.0, "secret_code": "AERO-004"},
+        {"id": "BOM-005", "model": "AeroTitan Heavy",      "max_payload_kg": 6.0, "max_speed_kmh": 50.0, "secret_code": "AERO-005"},
     ]
 
     # Midway MMR Central Logistics Hub (Centered between Churchgate ~18.93 and Virar ~19.45)
@@ -562,6 +564,8 @@ class DroneSimulator:
             lat, lon = self.make_safe_coordinates(lat, lon, 0.5)
             self.drones.append({
                 **d,
+                "max_payload_kg": float(d.get("max_payload_kg", 3.5)),
+                "max_speed_kmh":  float(d.get("max_speed_kmh", 65.0)),
                 "secret_code":   d.get("secret_code", "AERO-ADMIN"),
                 "lat":           lat,
                 "lon":           lon,
@@ -623,6 +627,8 @@ class DroneSimulator:
                 lat, lon = self.make_safe_coordinates(lat, lon, 0.5)
                 new_drones.append({
                     **d,
+                    "max_payload_kg": float(d.get("max_payload_kg", 3.5)),
+                    "max_speed_kmh":  float(d.get("max_speed_kmh", 65.0)),
                     "secret_code":   d.get("secret_code", "AERO-ADMIN"),
                     "lat":           lat,
                     "lon":           lon,
@@ -866,6 +872,8 @@ class DroneSimulator:
                 updated.append({
                     "id":               drone["id"],
                     "model":            drone["model"],
+                    "max_payload_kg":   float(drone.get("max_payload_kg", 3.5)),
+                    "max_speed_kmh":    float(drone.get("max_speed_kmh", 65.0)),
                     "lat":              round(drone["lat"], 6),
                     "lng":              round(drone["lon"], 6),
                     "altitude_m":       0.0,
@@ -902,6 +910,8 @@ class DroneSimulator:
                 updated.append({
                     "id":               drone["id"],
                     "model":            drone["model"],
+                    "max_payload_kg":   float(drone.get("max_payload_kg", 3.5)),
+                    "max_speed_kmh":    float(drone.get("max_speed_kmh", 65.0)),
                     "lat":              round(drone["lat"], 6),
                     "lng":              round(drone["lon"], 6),
                     "altitude_m":       0.0,
@@ -1062,6 +1072,8 @@ class DroneSimulator:
             updated.append({
                 "id":               drone["id"],
                 "model":            drone["model"],
+                "max_payload_kg":   float(drone.get("max_payload_kg", 3.5)),
+                "max_speed_kmh":    float(drone.get("max_speed_kmh", 65.0)),
                 "lat":              round(drone["lat"], 6),
                 "lng":              round(drone["lon"], 6),
                 "altitude_m":       round(drone["altitude"], 1),

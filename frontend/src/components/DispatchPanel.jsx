@@ -166,14 +166,16 @@ export default function DispatchPanel({
     ? calcDistanceKm(MUMBAI_HUB.lat, MUMBAI_HUB.lng, resolvedDest.lat, resolvedDest.lng)
     : 10.0;
 
-  // AI Predicted Battery Drain calculation
-  const predictedDrainPct = Math.min(95, Math.round(flightDistanceKm * (1.1 + payloadWeight * 0.38) + 4.5));
-  const currentBattery = selectedDrone?.battery_pct !== undefined ? selectedDrone.battery_pct : 0;
-  const remainingBatteryOnArrival = selectedDrone ? Math.max(0, Math.round(currentBattery - predictedDrainPct)) : 0;
-
   // Overweight Check
   const maxPayload = selectedDrone?.max_payload_kg || 4.0;
   const isOverweight = selectedDrone ? (payloadWeight > maxPayload) : false;
+
+  // AI Predicted Battery Drain calculation — Scaled to drone rated capacity
+  const payloadRatio = Math.min(1.5, payloadWeight / Math.max(maxPayload, 1.0));
+  const drainRatePerKm = 0.95 + payloadRatio * 0.75;
+  const predictedDrainPct = Math.min(95, Math.round(flightDistanceKm * drainRatePerKm + 3.0));
+  const currentBattery = selectedDrone?.battery_pct !== undefined ? selectedDrone.battery_pct : 0;
+  const remainingBatteryOnArrival = selectedDrone ? Math.max(0, Math.round(currentBattery - predictedDrainPct)) : 0;
 
   // Battery Safety Margin Check
   const isBatteryCritical = selectedDrone ? (remainingBatteryOnArrival < 20 || currentBattery < (predictedDrainPct + 10)) : false;
@@ -190,6 +192,7 @@ export default function DispatchPanel({
         drone_model: selectedDrone.model || 'Phantom-Mumbai X7',
         current_battery_pct: currentBattery,
         max_payload_kg: maxPayload,
+        max_speed_kmh: selectedDrone.max_speed_kmh || 65.0,
         payload_weight_kg: payloadWeight,
         flight_distance_km: flightDistanceKm,
         predicted_drain_pct: predictedDrainPct,
@@ -224,21 +227,25 @@ export default function DispatchPanel({
   const isBlocked = isOverweight || isBatteryCritical || isLlmBlocked;
   const isCaution = !isBlocked && (isBatteryTight || isLlmCaution);
 
-  const aiVerdict = isBlocked ? (isOverweight ? 'OVERWEIGHT' : 'BLOCKED') : (isCaution ? 'CAUTION' : 'SAFE');
-  const aiVerdictColor = isBlocked ? 'var(--brand-danger)' : (isCaution ? 'var(--brand-warning)' : 'var(--brand-accent)');
-  const aiVerdictBg = isBlocked ? 'rgba(255,61,87,0.1)' : (isCaution ? 'rgba(251,191,36,0.1)' : 'rgba(6,255,165,0.07)');
-  const aiVerdictBorder = isBlocked ? 'rgba(255,61,87,0.4)' : (isCaution ? 'rgba(251,191,36,0.4)' : 'rgba(6,255,165,0.3)');
+  const aiVerdict = isBlocked ? (isOverweight ? 'OVERWEIGHT' : 'BLOCKED') : (isCaution ? 'ADVISORY' : 'SAFE');
+  const aiVerdictColor = isBlocked ? 'var(--brand-danger)' : (isCaution ? '#ff9f43' : 'var(--brand-accent)');
+  const aiVerdictBg = isBlocked ? 'rgba(255,61,87,0.1)' : (isCaution ? 'rgba(255,159,67,0.12)' : 'rgba(6,255,165,0.07)');
+  const aiVerdictBorder = isBlocked ? 'rgba(255,61,87,0.4)' : (isCaution ? 'rgba(255,159,67,0.45)' : 'rgba(6,255,165,0.3)');
 
   const aiVerdictLabel = llmResult?.status_label || (
     isOverweight ? '⛔ BLOCKED: CARGO OVERWEIGHT' :
     isBatteryCritical ? '⚠️ UNSAFE: INSUFFICIENT CHARGE' :
-    isBatteryTight ? '⚡ CAUTION: TIGHT RESERVE MARGIN' :
+    isBatteryTight ? '⚡ ADVISORY: TIGHT RESERVE MARGIN' :
     '✅ DISPATCH APPROVED — SAFE FLIGHT'
   );
 
   const aiVerdictMessage = llmResult?.analysis || (
     isOverweight ? `Package mass (${payloadWeight.toFixed(1)} kg) exceeds ${selectedDrone?.id || 'drone'} limit (${maxPayload.toFixed(1)} kg). Choose a heavier drone or reduce mass.` :
-    isBatteryCritical ? `Current battery (${currentBattery.toFixed(0)}%) too low for ${flightDistanceKm.toFixed(1)} km delivery. Predicted drain ${predictedDrainPct}% leaves only ${remainingBatteryOnArrival}%. Need >= ${(predictedDrainPct + 20)}% charge.` :
+    isBatteryCritical ? (
+      currentBattery >= 90 && predictedDrainPct >= 75
+        ? `Transit distance (${flightDistanceKm.toFixed(1)} km) exceeds single-battery range for ${payloadWeight.toFixed(1)} kg cargo. Reduce mass or select closer destination.`
+        : `Current battery (${currentBattery.toFixed(0)}%) too low for ${flightDistanceKm.toFixed(1)} km delivery. Predicted drain ~${predictedDrainPct}% leaves only ${remainingBatteryOnArrival}%. Need >= ${Math.min(100, predictedDrainPct + 20)}% charge.`
+    ) :
     isBatteryTight ? `Mission feasible but leaves tight ${remainingBatteryOnArrival}% reserve upon delivery. Drone should RTB immediately post-drop.` :
     `AI validated: Safe payload ratio (${((payloadWeight/maxPayload)*100).toFixed(0)}%) & healthy ${remainingBatteryOnArrival}% battery reserve upon arrival.`
   );
@@ -606,11 +613,18 @@ export default function DispatchPanel({
               id="drone-select"
               style={{ flex: 1 }}
             >
-              {drones.map(d => (
-                <option key={d.id} value={d.id}>
-                  {d.id} — {d.model} ({d.battery_pct?.toFixed(0)}% Bat)
-                </option>
-              ))}
+              {drones.map(d => {
+                const speedStr = d.max_speed_kmh != null
+                  ? `${Number(d.max_speed_kmh).toFixed(0)} km/h`
+                  : d.speed_kmh != null && d.speed_kmh > 0
+                    ? `${Number(d.speed_kmh).toFixed(0)} km/h`
+                    : '65 km/h';
+                return (
+                  <option key={d.id} value={d.id}>
+                    {d.id} — {d.model} ({speedStr})
+                  </option>
+                );
+              })}
             </select>
             <button
               type="button"

@@ -36,7 +36,7 @@ import { getDatabaseStatus } from './services/api';
 
 
 
-function NavBar({ lastUpdate, currentView, onViewChange }) {
+function NavBar({ lastUpdate, currentView, onViewChange, weather }) {
   const [currentTime, setCurrentTime] = useState(() =>
     new Date().toLocaleTimeString('en-IN', { hour12: false })
   );
@@ -58,13 +58,40 @@ function NavBar({ lastUpdate, currentView, onViewChange }) {
         <div className="nav-logo-icon">✈️</div>
         <div>
           <div className="nav-logo-text">Delivr-X</div>
-
         </div>
       </div>
 
+      {/* Right Side: Live Weather Badge & Time Stamp */}
+      <div className="nav-status-bar" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {weather && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '5px 12px',
+            borderRadius: 6,
+            background: 'rgba(0, 212, 255, 0.05)',
+            border: '1px solid rgba(0, 212, 255, 0.2)',
+            fontSize: 11,
+            color: 'var(--text-secondary)',
+          }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#06ffa5', boxShadow: '0 0 6px #06ffa5' }} />
+              <strong style={{ color: 'var(--brand-primary)' }}>Live Weather (Open-Meteo):</strong>
+              <span>{weather.condition || 'Clear Sky'} ({weather.temperature_c}°C)</span>
+            </span>
+            <span style={{
+              fontFamily: 'JetBrains Mono, monospace',
+              color: 'var(--text-primary)',
+              fontSize: 10.5,
+              borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+              paddingLeft: 10,
+            }}>
+              Wind: {weather.wind_speed_ms} m/s | Gust: {weather.wind_gust_ms} m/s
+            </span>
+          </div>
+        )}
 
-      {/* Right Side: Only Time Stamp */}
-      <div className="nav-status-bar">
         <div className="nav-status-item">
           <Clock size={12} />
           <span className="text-mono">{timeDisplay}</span>
@@ -107,6 +134,11 @@ export default function App() {
       ['DELIVERING', 'RETURNING', 'IN_FLIGHT', 'RTB'].includes(d.status) ||
       (Number(d.speed_kmh) > 0 && d.status !== 'STANDBY' && d.status !== 'IDLE' && d.status !== 'PARACHUTE_DEPLOYED')
     );
+  }, [drones]);
+
+  // Drones currently actively delivering cargo
+  const deliveringDrones = useMemo(() => {
+    return drones.filter(d => ['DELIVERING', 'IN_FLIGHT'].includes(d.status));
   }, [drones]);
 
   const tracked3DDrone = useMemo(() => {
@@ -214,6 +246,7 @@ export default function App() {
           <NavBar
             connected={connected}
             lastUpdate={lastUpdate}
+            weather={weather}
             dronesCount={drones.length}
             dbStatus={dbStatus}
             currentView={currentView}
@@ -334,10 +367,13 @@ export default function App() {
                       </div>
 
 
-                      {/* Mumbai Fleet Active */}
-                      <div className="map-chip">
-                        <div className="pulse-dot" />
-                        Fleet Active ({drones.length})
+                      {/* Mumbai Delivering Drones */}
+                      <div className="map-chip" id="map-delivering-chip" title={`${deliveringDrones.length} drone(s) actively delivering out of ${drones.length} total fleet`}>
+                        <div
+                          className="pulse-dot"
+                          style={deliveringDrones.length === 0 ? { background: '#64748b', boxShadow: 'none', animation: 'none' } : {}}
+                        />
+                        Delivering ({deliveringDrones.length})
                       </div>
 
 
@@ -349,8 +385,6 @@ export default function App() {
                       routeResult={routeResult}
                       selectedDroneId={selectedDroneId}
                       onDroneSelect={setSelectedDroneId}
-                      onMapClick={(coords) => setMapPinnedDest(coords)}
-                      customDestination={mapPinnedDest}
                       sidebarState={`${isNavCollapsed}-${isTelemetryCollapsed}`}
                       mapTheme={mapTheme}
                     />

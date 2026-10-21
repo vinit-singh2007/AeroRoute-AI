@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import {
   Battery, Activity, Shield, AlertTriangle, Radio,
-  Gauge, AlertOctagon, RefreshCw
+  Gauge, AlertOctagon, RefreshCw, CloudRain, Droplets
 } from 'lucide-react';
 
 // Semicircular Arc Gauge with dynamic alert styling
@@ -70,6 +70,104 @@ function ArcGauge({ value, max = 100, color, label, unit, size = 95, isAlert = f
         textTransform: 'uppercase',
       }}>
         {label}
+      </div>
+    </div>
+  );
+}
+
+// ── LIVE RAIN / PRECIPITATION GAUGE ──────────────────────────────────────
+function RainGauge({ precipMm, condition, size = 95 }) {
+  // Rain thresholds (mm/h): 0=dry, 0-2=light, 2-7.5=mod, 7.5-15=heavy, >15=violent
+  const safeVal = typeof precipMm === 'number' && !isNaN(precipMm) ? precipMm : 0;
+  const maxMm = 15;  // 15 mm/h = violent rain ceiling for gauge arc
+  const pct = Math.min(safeVal / maxMm, 1);
+
+  const color = safeVal === 0
+    ? '#06ffa5'
+    : safeVal < 2
+      ? '#22d3ee'
+      : safeVal < 7.5
+        ? '#fbbf24'
+        : safeVal < 15
+          ? '#ff9f43'
+          : '#ff3d57';
+
+  const rainLabel = safeVal === 0
+    ? 'DRY'
+    : safeVal < 2
+      ? 'LIGHT RAIN'
+      : safeVal < 7.5
+        ? 'MODERATE RAIN'
+        : safeVal < 15
+          ? 'HEAVY RAIN'
+          : 'VIOLENT RAIN';
+
+  const isAlert = safeVal >= 7.5;
+  const radius = 38;
+  const circumference = Math.PI * radius;
+  const offset = circumference * (1 - pct);
+  const cx = size / 2;
+  const cy = size / 2 + 8;
+
+  return (
+    <div style={{
+      textAlign: 'center',
+      padding: '6px 4px',
+      borderRadius: 8,
+      background: isAlert ? `${color}14` : 'transparent',
+      border: isAlert ? `1px solid ${color}40` : '1px solid transparent',
+      transition: 'all 200ms ease',
+    }}>
+      <svg width={size} height={size * 0.65} viewBox={`0 0 ${size} ${size * 0.65}`}>
+        {/* Background arc */}
+        <path
+          d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+          fill="none"
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth="7"
+          strokeLinecap="round"
+        />
+        {/* Value arc */}
+        <path
+          d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+          fill="none"
+          stroke={color}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1), stroke 0.4s ease' }}
+          filter={`drop-shadow(0 0 6px ${color}90)`}
+        />
+        {/* Precipitation value */}
+        <text
+          x={cx} y={cy - 5}
+          textAnchor="middle"
+          fill={color}
+          fontSize="13"
+          fontWeight="800"
+          fontFamily="JetBrains Mono, monospace"
+        >
+          {safeVal.toFixed(1)}
+        </text>
+        <text x={cx} y={cy + 7} textAnchor="middle" fill="rgba(120,160,200,0.6)" fontSize="8" fontFamily="Inter, sans-serif">
+          mm/h
+        </text>
+      </svg>
+      {/* Rain label chip */}
+      <div style={{
+        fontSize: 8,
+        color,
+        marginTop: -3,
+        fontWeight: 800,
+        letterSpacing: '0.5px',
+        textTransform: 'uppercase',
+        padding: '1px 5px',
+        borderRadius: 4,
+        background: `${color}18`,
+        display: 'inline-block',
+      }}>
+        {rainLabel}
       </div>
     </div>
   );
@@ -341,8 +439,16 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
   const isCriticalAltitude = altValue > 150;
   const isLowAltitudeHazard = ['DELIVERING', 'IN_FLIGHT'].includes(selected.status) && altValue > 0 && altValue < 25;
 
+  // ── RAIN / PRECIPITATION from live weather ──
+  const precipMm = typeof weather?.precipitation_mm === 'number' ? weather.precipitation_mm : 0;
+  const isLightRain = precipMm > 0 && precipMm < 2;
+  const isModRain = precipMm >= 2 && precipMm < 7.5;
+  const isHeavyRain = precipMm >= 7.5 && precipMm < 15;
+  const isViolentRain = precipMm >= 15;
+  const hasRainHazard = isHeavyRain || isViolentRain;
+
   // UNRESOLVED hazard: Requires pilot action ONLY if NOT already returning or parachuted
-  const hasHazard = !isRTB && !isNormalReturning && !isParachuted && (isHighWind || isLowBattery || isLowFSI || isCriticalAction || isCriticalAltitude);
+  const hasHazard = !isRTB && !isNormalReturning && !isParachuted && (isHighWind || isLowBattery || isLowFSI || isCriticalAction || isCriticalAltitude || hasRainHazard);
 
   // Dynamic colors: Each gauge responds to its own physical threshold (Wind > 10 m/s caution, > 15 m/s hazard)
   const windColor = isHighWind ? '#ff3d57' : windSpeed > 10.0 ? '#fbbf24' : '#06ffa5';
@@ -352,7 +458,13 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
       ? '#fbbf24'
       : 'var(--brand-primary)';
   const maxSpd = Number(selected.max_speed_kmh) || 85;
-  const speedColor = selected.speed_kmh > maxSpd ? '#fbbf24' : 'var(--brand-primary)';
+
+  // ── RAIN-ADJUSTED OPTIMALITY PENALTY ──
+  // Derive a 0-100 weather optimality score (100 = perfect flying conditions)
+  const rainPenalty = isViolentRain ? 60 : isHeavyRain ? 40 : isModRain ? 20 : isLightRain ? 8 : 0;
+  const windPenalty = isExtremeWind ? 35 : isHighWind ? 20 : windSpeed > 10 ? 8 : 0;
+  const weatherOptimality = Math.max(0, 100 - rainPenalty - windPenalty);
+  const weatherOptColor = weatherOptimality >= 80 ? '#06ffa5' : weatherOptimality >= 50 ? '#fbbf24' : '#ff9f43';
 
   // Build specific issue messages
   const issueMessages = [];
@@ -363,6 +475,12 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
   if (isLowAltitudeHazard) issueMessages.push(`Terrain Proximity Risk (${altValue.toFixed(0)} m < 25 m)`);
   if (actionStatus === 'CRITICAL') issueMessages.push(`Fuzzy Logic Critical Abort Signal`);
   if (actionStatus === 'REROUTE_RECOMMENDED') issueMessages.push(`FSI Caution: Weather/Distance Reroute Advised`);
+  if (isViolentRain) issueMessages.push(`⛈ Violent Rain (${precipMm.toFixed(1)} mm/h) — Ground Mission`);
+  else if (isHeavyRain) issueMessages.push(`🌧 Heavy Rain (${precipMm.toFixed(1)} mm/h) — Consider RTB`);
+  else if (isModRain) issueMessages.push(`🌦 Moderate Rain (${precipMm.toFixed(1)} mm/h) — Reduce Speed`);
+  else if (isLightRain) issueMessages.push(`🌂 Light Rain (${precipMm.toFixed(1)} mm/h) — Monitor`);
+  if (weatherOptimality < 60 && weatherOptimality >= 40) issueMessages.push(`Weather Optimality Low: ${weatherOptimality.toFixed(0)}%`);
+  if (weatherOptimality < 40) issueMessages.push(`⚠ Critical Weather Optimality: ${weatherOptimality.toFixed(0)}%`);
 
   return (
     <div style={{
@@ -392,74 +510,13 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
 
       {/* ── DRONES IN MOTION SELECTOR ── */}
       <div className="panel-section" style={{
-        padding: '12px 14px',
+        padding: '10px 14px',
         borderBottom: hasHazard
           ? '1px solid rgba(255, 61, 87, 0.3)'
           : isRTB
             ? '1px solid rgba(251, 191, 36, 0.3)'
             : '1px solid var(--border-subtle)',
       }}>
-        {weather && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '4px 8px',
-            marginBottom: 8,
-            borderRadius: 6,
-            background: 'rgba(0, 212, 255, 0.05)',
-            border: '1px solid rgba(0, 212, 255, 0.15)',
-            fontSize: 9.5,
-            color: 'var(--text-secondary)',
-          }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#06ffa5', boxShadow: '0 0 6px #06ffa5' }} />
-              <strong style={{ color: 'var(--brand-primary)' }}>Live Weather (Open-Meteo):</strong> {weather.condition || 'Clear'} ({weather.temperature_c}°C)
-            </span>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-primary)', fontSize: 9 }}>
-              Wind: {weather.wind_speed_ms} m/s | Gust: {weather.wind_gust_ms} m/s
-            </span>
-          </div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div className="panel-title" style={{
-            margin: 0,
-            color: hasHazard ? '#ff3d57' : isRTB ? '#fbbf24' : 'var(--brand-primary)',
-          }}>
-            <Activity size={13} />
-            <span>Airborne Telemetry ({motionDrones.length} In Motion)</span>
-          </div>
-          <span style={{
-            fontSize: 9,
-            fontWeight: 800,
-            padding: '2px 6px',
-            borderRadius: 10,
-            background: hasHazard
-              ? 'rgba(255,61,87,0.2)'
-              : isEmergencyRTB
-                ? 'rgba(255,61,87,0.18)'
-                : isNormalReturning
-                  ? 'rgba(251,191,36,0.18)'
-                  : 'rgba(6,255,165,0.12)',
-            color: hasHazard
-              ? '#ff3d57'
-              : isEmergencyRTB
-                ? '#ff3d57'
-                : isNormalReturning
-                  ? '#fbbf24'
-                  : 'var(--brand-accent)',
-            border: hasHazard
-              ? '1px solid rgba(255,61,87,0.4)'
-              : isEmergencyRTB
-                ? '1px solid rgba(255,61,87,0.4)'
-                : isNormalReturning
-                  ? '1px solid rgba(251,191,36,0.4)'
-                  : '1px solid rgba(6,255,165,0.3)',
-          }}>
-            {hasHazard ? '⚠️ HAZARD ALERT' : isEmergencyRTB ? '🚨 RTB ACTIVE' : isNormalReturning ? '🔄 RETURNING' : '● LIVE 1Hz'}
-          </span>
-        </div>
-
         {/* Tab Buttons for ONLY in-motion drones */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {motionDrones.map(d => {
@@ -470,8 +527,8 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
             const droneIsNormalReturning = d.status === 'RETURNING' && !droneIsEmergencyRtb;
 
             const droneIsRed = droneHasHazard || droneIsEmergencyRtb;
-            const droneIsYellow = !droneIsRed && (droneIsNormalReturning || d.battery_pct < 50 || d.fsi < 65 || d.wind_gust_ms > 10);
-            const tabColor = droneIsRed ? '#ff3d57' : droneIsYellow ? '#fbbf24' : isDeliv ? 'var(--brand-primary)' : '#06ffa5';
+            const droneIsYellow = !droneIsRed && (d.battery_pct < 50 || d.fsi < 65 || d.wind_gust_ms > 10);
+            const tabColor = droneIsRed ? '#ff3d57' : droneIsYellow ? '#fbbf24' : isDeliv || droneIsNormalReturning ? 'var(--brand-primary)' : '#06ffa5';
 
             return (
               <button
@@ -538,11 +595,11 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
           margin: '10px 14px 4px',
           padding: '12px 14px',
           borderRadius: 10,
-          background: isEmergencyRTB ? 'rgba(255, 61, 87, 0.12)' : 'rgba(251, 191, 36, 0.12)',
-          border: `1.5px solid ${isEmergencyRTB ? 'rgba(255, 61, 87, 0.65)' : 'rgba(251, 191, 36, 0.65)'}`,
-          boxShadow: `0 0 16px ${isEmergencyRTB ? 'rgba(255, 61, 87, 0.2)' : 'rgba(251, 191, 36, 0.18)'}`,
+          background: isEmergencyRTB ? 'rgba(255, 61, 87, 0.12)' : 'rgba(0, 212, 255, 0.12)',
+          border: `1.5px solid ${isEmergencyRTB ? 'rgba(255, 61, 87, 0.65)' : 'rgba(0, 212, 255, 0.65)'}`,
+          boxShadow: `0 0 16px ${isEmergencyRTB ? 'rgba(255, 61, 87, 0.2)' : 'rgba(0, 212, 255, 0.2)'}`,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: isEmergencyRTB ? '#ff3d57' : '#fbbf24', fontWeight: 900, fontSize: 11.5, letterSpacing: '0.4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: isEmergencyRTB ? '#ff3d57' : '#00d4ff', fontWeight: 900, fontSize: 11.5, letterSpacing: '0.4px' }}>
             <RefreshCw size={14} className="spin" style={{ animation: 'spin 3s linear infinite' }} />
             <span>{isEmergencyRTB ? '🚨 EMERGENCY RTB ENGAGED (MISSION ABORTED)' : '🔄 RETURNING TO HUB (MISSION COMPLETED)'}</span>
           </div>
@@ -551,7 +608,7 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
               ? 'Pilot emergency abort executed. Drone is navigating back to MMR Central Hub via A* optimal safe corridor.'
               : 'Package delivered successfully. Drone is navigating back to MMR Central Hub launchpad.'}
           </div>
-          <div style={{ fontSize: 9.5, color: isEmergencyRTB ? '#ff3d57' : 'rgba(251, 191, 36, 0.85)', marginTop: 4 }}>
+          <div style={{ fontSize: 9.5, color: isEmergencyRTB ? '#ff3d57' : 'rgba(0, 212, 255, 0.85)', marginTop: 4 }}>
             Destination: MMR Central Hub • Altitude & Corridor Protected
           </div>
         </div>
@@ -666,7 +723,7 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
         <BatteryBar pct={selected.battery_pct} />
       </div>
 
-      {/* ── 3 GAUGES: WIND, ALTITUDE, SPEED (NO HARDCODED VALUES) ── */}
+      {/* ── 3 GAUGES: WIND, ALTITUDE, RAIN/PRECIP (LIVE WEATHER) ── */}
       <div className="panel-section" style={{ padding: '10px 14px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
           <ArcGauge
@@ -685,14 +742,44 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
             unit="m"
             isAlert={isCriticalAltitude || isLowAltitudeHazard}
           />
-          <ArcGauge
-            value={selected.speed_kmh}
-            max={80}
-            color={speedColor}
-            label="Speed"
-            unit="km/h"
+          <RainGauge
+            precipMm={precipMm}
+            condition={weather?.condition || 'N/A'}
           />
         </div>
+      </div>
+
+      {/* ── WEATHER FLIGHT OPTIMALITY ── */}
+      <div className="panel-section" style={{ padding: '8px 14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+          <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <CloudRain size={11} style={{ color: weatherOptColor }} /> Weather Flight Optimality
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 900, color: weatherOptColor, fontFamily: 'JetBrains Mono, monospace' }}>
+            {weatherOptimality.toFixed(0)}%
+          </span>
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+          <div style={{
+            width: `${weatherOptimality}%`,
+            height: '100%',
+            background: weatherOptColor,
+            borderRadius: 4,
+            boxShadow: `0 0 8px ${weatherOptColor}60`,
+            transition: 'width 0.8s cubic-bezier(0.4,0,0.2,1)',
+          }} />
+        </div>
+        {weather && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 9.5, color: 'var(--text-secondary)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Droplets size={9} style={{ color: precipMm > 0 ? '#22d3ee' : 'var(--text-muted)' }} />
+              {weather.condition}
+            </span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              {precipMm > 0 ? `${precipMm.toFixed(1)} mm/h · ` : ''}{weather.humidity_pct}% RH
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── LIVE GPS POSITION & HEADING (REAL SENSOR DATA) ── */}
@@ -738,12 +825,12 @@ export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSele
                   ? 'rgba(6,255,165,0.08)'
                   : 'rgba(251,191,36,0.1)',
             border: `1.5px solid ${hasHazard
-                ? 'rgba(255,61,87,0.5)'
-                : isRTB
-                  ? 'rgba(251,191,36,0.4)'
-                  : selected.action_status === 'SAFE'
-                    ? 'rgba(6,255,165,0.3)'
-                    : 'rgba(251,191,36,0.3)'
+              ? 'rgba(255,61,87,0.5)'
+              : isRTB
+                ? 'rgba(251,191,36,0.4)'
+                : selected.action_status === 'SAFE'
+                  ? 'rgba(6,255,165,0.3)'
+                  : 'rgba(251,191,36,0.3)'
               }`,
             display: 'flex',
             alignItems: 'center',

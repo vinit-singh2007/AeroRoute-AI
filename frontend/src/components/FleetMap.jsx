@@ -183,7 +183,8 @@ function hubIcon() {
       background: rgba(5,12,24,0.96);
       border: 1.5px solid #00d4ff;
       color: #00d4ff;
-      padding: 4px 10px;
+      padding: 4px 6px;
+      padding-right: 2px;
       border-radius: 12px;
       font-size: 10px;
       font-family: 'JetBrains Mono', monospace;
@@ -202,7 +203,7 @@ function hubIcon() {
   return L.divIcon({
     html,
     className: 'custom-hub-leaflet-icon',
-    iconSize: [150, 26],
+    iconSize: [135, 26],
     iconAnchor: [75, 13],
   });
 }
@@ -475,21 +476,13 @@ export default function FleetMap({
     }
   }, [hub]);
 
-  // Update custom destination marker if set by user click
+  // Clean up any custom destination marker
   useEffect(() => {
     if (!mapInstance.current) return;
-    if (customDestination) {
-      if (customDestMarker.current) {
-        customDestMarker.current.setLatLng([customDestination.lat, customDestination.lng]);
-      } else {
-        customDestMarker.current = L.marker([customDestination.lat, customDestination.lng], {
-          icon: waypointIcon('destination'),
-        })
-          .addTo(mapInstance.current)
-          .bindPopup('<b style="color:#06ffa5">Custom Target Point</b><br><span style="color:#7ba3cc;font-size:11px">Pinned via Map Click</span>');
-      }
-    } else if (customDestMarker.current) {
-      mapInstance.current.removeLayer(customDestMarker.current);
+    if (customDestMarker.current) {
+      try {
+        mapInstance.current.removeLayer(customDestMarker.current);
+      } catch { }
       customDestMarker.current = null;
     }
   }, [customDestination]);
@@ -613,10 +606,10 @@ export default function FleetMap({
         return; // skip corridor rendering
       }
       const hasActiveMission = typeof drone.dest_lat === 'number' && typeof drone.dest_lng === 'number';
-
       if (hasActiveMission) {
         const isDelivering = drone.status === 'DELIVERING' || drone.status === 'IN_FLIGHT';
-        const corridorColor = isDelivering ? '#00d4ff' : '#fbbf24';
+        const isEmergency = drone.status === 'RTB' || drone.emergency_rtb === true;
+        const corridorColor = isEmergency ? '#ff3d57' : '#00d4ff';
 
         // Connect through full A* flight path waypoints curving around obstacles
         let corridorCoords;

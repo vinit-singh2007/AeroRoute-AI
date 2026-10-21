@@ -100,7 +100,7 @@ function DroneCard({ drone, isSelected, onClick, onDelete }) {
 export default function FleetOverview({ drones, selectedDroneId, onDroneSelect }) {
   const stats = useMemo(() => {
     if (!drones.length) return null;
-    const delivering = drones.filter(d => d.status === 'DELIVERING').length;
+    const delivering = drones.filter(d => ['DELIVERING', 'IN_FLIGHT'].includes(d.status)).length;
     const returning  = drones.filter(d => d.status === 'RETURNING').length;
     const rtb        = drones.filter(d => d.status === 'RTB').length;
     const avgBattery = drones.reduce((s, d) => s + d.battery_pct, 0) / drones.length;

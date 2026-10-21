@@ -38,40 +38,40 @@ const MUMBAI_HUB = {
 
 const MUMBAI_DESTINATIONS = [
   // ── North MMR Corridor (Virar, Nalasopara, Vasai, Mira-Bhayandar) ──
-  { id: 'MUM-VIRAR',   name: 'Virar West Coastal Logistics Terminal',      lat: 19.4564, lng: 72.8081 },
-  { id: 'MUM-NALA',    name: 'Nalasopara West Distribution Depot',         lat: 19.4182, lng: 72.8198 },
-  { id: 'MUM-VASAI',   name: 'Vasai East Industrial Cargo Hub',           lat: 19.3812, lng: 72.8311 },
-  { id: 'MUM-BHAY',    name: 'Bhayandar East Freight Depot',              lat: 19.2990, lng: 72.8550 },
-  { id: 'MUM-MIRA',    name: 'Mira Road Express Commercial Drop',         lat: 19.2813, lng: 72.8561 },
+  { id: 'MUM-VIRAR', name: 'Virar West Coastal Logistics Terminal', lat: 19.4564, lng: 72.8081 },
+  { id: 'MUM-NALA', name: 'Nalasopara West Distribution Depot', lat: 19.4182, lng: 72.8198 },
+  { id: 'MUM-VASAI', name: 'Vasai East Industrial Cargo Hub', lat: 19.3812, lng: 72.8311 },
+  { id: 'MUM-BHAY', name: 'Bhayandar East Freight Depot', lat: 19.2990, lng: 72.8550 },
+  { id: 'MUM-MIRA', name: 'Mira Road Express Commercial Drop', lat: 19.2813, lng: 72.8561 },
 
   // ── Western Suburbs Corridor ──
-  { id: 'MUM-BORIVALI',name: 'Borivali West Cargo Center',                 lat: 19.2307, lng: 72.8567 },
-  { id: 'MUM-KANDIV',  name: 'Kandivali East Industrial Depot',           lat: 19.2062, lng: 72.8732 },
-  { id: 'MUM-MALAD',   name: 'Malad West Mindspace Commercial Drop',      lat: 19.1860, lng: 72.8485 },
-  { id: 'MUM-GOREG',   name: 'Goregaon East NESCO Exhibition Center',     lat: 19.1551, lng: 72.8526 },
-  { id: 'MUM-ANDH-E',  name: 'Andheri East SEEPZ Cargo Depot',            lat: 19.1136, lng: 72.8697 },
-  { id: 'MUM-ANDH-W',  name: 'Andheri West Lokhandwala Hub',              lat: 19.1362, lng: 72.8272 },
-  { id: 'MUM-JUHU',    name: 'Juhu Tara Coastal Drop Point',              lat: 19.0988, lng: 72.8264 },
-  { id: 'MUM-BANDRA',  name: 'Bandra West Pali Hill Delivery Hub',        lat: 19.0607, lng: 72.8277 },
+  { id: 'MUM-BORIVALI', name: 'Borivali West Cargo Center', lat: 19.2307, lng: 72.8567 },
+  { id: 'MUM-KANDIV', name: 'Kandivali East Industrial Depot', lat: 19.2062, lng: 72.8732 },
+  { id: 'MUM-MALAD', name: 'Malad West Mindspace Commercial Drop', lat: 19.1860, lng: 72.8485 },
+  { id: 'MUM-GOREG', name: 'Goregaon East NESCO Exhibition Center', lat: 19.1551, lng: 72.8526 },
+  { id: 'MUM-ANDH-E', name: 'Andheri East SEEPZ Cargo Depot', lat: 19.1136, lng: 72.8697 },
+  { id: 'MUM-ANDH-W', name: 'Andheri West Lokhandwala Hub', lat: 19.1362, lng: 72.8272 },
+  { id: 'MUM-JUHU', name: 'Juhu Tara Coastal Drop Point', lat: 19.0988, lng: 72.8264 },
+  { id: 'MUM-BANDRA', name: 'Bandra West Pali Hill Delivery Hub', lat: 19.0607, lng: 72.8277 },
 
   // ── Central Suburbs & Thane Corridor ──
-  { id: 'MUM-THANE',   name: 'Thane West Wagle Estate Logistics Terminal', lat: 19.1944, lng: 72.9567 },
-  { id: 'MUM-POWAI',   name: 'Powai Hiranandani Tech Delivery',           lat: 19.1176, lng: 72.9060 },
-  { id: 'MUM-GHATK',   name: 'Ghatkopar East Metro Cargo Depot',          lat: 19.0856, lng: 72.9082 },
-  { id: 'MUM-KURLA',   name: 'Kurla West Phoenix Marketcity Depot',       lat: 19.0860, lng: 72.8890 },
-  { id: 'MUM-DADAR',   name: 'Dadar Central Crossing Depot',              lat: 19.0178, lng: 72.8478 },
-  { id: 'MUM-LPAREL',  name: 'Lower Parel High Street Commercial Hub',    lat: 18.9950, lng: 72.8267 },
+  { id: 'MUM-THANE', name: 'Thane West Wagle Estate Logistics Terminal', lat: 19.1944, lng: 72.9567 },
+  { id: 'MUM-POWAI', name: 'Powai Hiranandani Tech Delivery', lat: 19.1176, lng: 72.9060 },
+  { id: 'MUM-GHATK', name: 'Ghatkopar East Metro Cargo Depot', lat: 19.0856, lng: 72.9082 },
+  { id: 'MUM-KURLA', name: 'Kurla West Phoenix Marketcity Depot', lat: 19.0860, lng: 72.8890 },
+  { id: 'MUM-DADAR', name: 'Dadar Central Crossing Depot', lat: 19.0178, lng: 72.8478 },
+  { id: 'MUM-LPAREL', name: 'Lower Parel High Street Commercial Hub', lat: 18.9950, lng: 72.8267 },
 
   // ── South Mumbai (Town) Corridor ──
-  { id: 'MUM-NARIMAN', name: 'Nariman Point / Marine Drive Hub',          lat: 18.9256, lng: 72.8242 },
-  { id: 'MUM-COLABA',  name: 'Colaba Causeway Commercial Depot',          lat: 18.9150, lng: 72.8260 },
+  { id: 'MUM-NARIMAN', name: 'Nariman Point / Marine Drive Hub', lat: 18.9256, lng: 72.8242 },
+  { id: 'MUM-COLABA', name: 'Colaba Causeway Commercial Depot', lat: 18.9150, lng: 72.8260 },
 
   // ── Navi Mumbai Corridor ──
-  { id: 'MUM-VASHI',   name: 'Navi Mumbai Vashi Terminal',               lat: 19.0770, lng: 72.9986 },
-  { id: 'MUM-BELAPUR', name: 'CBD Belapur & Kharghar Tech Node',          lat: 19.0269, lng: 73.0400 },
+  { id: 'MUM-VASHI', name: 'Navi Mumbai Vashi Terminal', lat: 19.0770, lng: 72.9986 },
+  { id: 'MUM-BELAPUR', name: 'CBD Belapur & Kharghar Tech Node', lat: 19.0269, lng: 73.0400 },
 
   // ── Custom Coordinates ──
-  { id: 'CUSTOM',      name: '📍 Custom Drop (Enter Customer GPS Lat-Lng)', lat: null,    lng: null },
+  { id: 'CUSTOM', name: '📍 Custom Drop (Enter Customer GPS Lat-Lng)', lat: null, lng: null },
 ];
 
 export default function MissionDispatchPage({
@@ -83,37 +83,38 @@ export default function MissionDispatchPage({
   onRefreshFleet,
 }) {
   // Dispatcher & Order state
-  const [dispatcherName,   setDispatcherName]   = useState('Agent Rohit Verma');
-  const [orderId,          setOrderId]          = useState('ORD-MUM-8421');
-  const [cargoPriority,    setCargoPriority]    = useState('EXPRESS');
+  const [dispatcherName, setDispatcherName] = useState('Agent Rohit Verma');
+  const [orderId, setOrderId] = useState('ORD-MUM-8421');
+  const [cargoPriority, setCargoPriority] = useState('EXPRESS');
 
   // Drone & Target state
-  const [selectedDroneId,  setSelectedDroneId]  = useState('');
-  const [destinationId,    setDestinationId]    = useState('MUM-VIRAR');
-  const [customLat,        setCustomLat]        = useState('');
-  const [customLng,        setCustomLng]        = useState('');
-  const [payloadWeight,    setPayloadWeight]    = useState(1.8);
-  const [dispatchLoading,  setDispatchLoading]  = useState(false);
-  const [lastDispatched,   setLastDispatched]   = useState(null);
+  const [selectedDroneId, setSelectedDroneId] = useState('');
+  const [destinationId, setDestinationId] = useState('MUM-VIRAR');
+  const [customLat, setCustomLat] = useState('');
+  const [customLng, setCustomLng] = useState('');
+  const [payloadWeight, setPayloadWeight] = useState(1.8);
+  const [dispatchLoading, setDispatchLoading] = useState(false);
+  const [lastDispatched, setLastDispatched] = useState(null);
 
   // New Drone Form Modal State
-  const [showAddDrone,        setShowAddDrone]        = useState(false);
-  const [newDroneId,          setNewDroneId]          = useState('');
-  const [newDroneModel,       setNewDroneModel]       = useState('OctoCopter HeavyLifter');
-  const [newDronePayload,     setNewDronePayload]     = useState(4.5);
-  const [newDroneBattery,     setNewDroneBattery]     = useState(100);
-  const [newDroneSpeed,       setNewDroneSpeed]       = useState(65);
-  const [newDroneSecretCode,  setNewDroneSecretCode]  = useState('');
-  const [addLoading,          setAddLoading]          = useState(false);
+  const [showAddDrone, setShowAddDrone] = useState(false);
+  const [newDroneId, setNewDroneId] = useState('');
+  const [newDroneModel, setNewDroneModel] = useState('OctoCopter HeavyLifter');
+  const [newDronePayload, setNewDronePayload] = useState(4.5);
+  const [newDroneBattery, setNewDroneBattery] = useState(100);
+  const [newDroneSpeed, setNewDroneSpeed] = useState(65);
+  const [newDroneSecretCode, setNewDroneSecretCode] = useState('');
+  const [addLoading, setAddLoading] = useState(false);
 
   // Individual Decommission Authorization Modal State
-  const [droneToDelete,       setDroneToDelete]       = useState(null);
-  const [deleteSecretCode,    setDeleteSecretCode]    = useState('');
-  const [deleteLoading,       setDeleteLoading]       = useState(false);
+  const [droneToDelete, setDroneToDelete] = useState(null);
+  const [deleteSecretCode, setDeleteSecretCode] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // LLM Pre-Flight Safety Advisor State
-  const [llmResult,        setLlmResult]        = useState(null);
-  const [llmLoading,       setLlmLoading]       = useState(false);
+  const [llmResult, setLlmResult] = useState(null);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [hasEvaluated, setHasEvaluated] = useState(false);
 
   // Auto-select first drone if not selected
   useEffect(() => {
@@ -148,9 +149,9 @@ export default function MissionDispatchPage({
     const R = 6371.0;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
     return 2 * R * Math.asin(Math.sqrt(a));
   };
 
@@ -161,14 +162,16 @@ export default function MissionDispatchPage({
     ? calcDistanceKm(currentHub.lat, currentHub.lng, resolvedDest.lat, resolvedDest.lng)
     : 10.0;
 
-  // AI Predicted Battery Drain calculation
-  const predictedDrainPct = Math.min(95, Math.round(flightDistanceKm * (1.1 + payloadWeight * 0.38) + 4.5));
-  const currentBattery = selectedDrone?.battery_pct !== undefined ? selectedDrone.battery_pct : 0;
-  const remainingBatteryOnArrival = selectedDrone ? Math.max(0, Math.round(currentBattery - predictedDrainPct)) : 0;
-
   // Overweight Check
   const maxPayload = selectedDrone?.max_payload_kg || 4.0;
   const isOverweight = selectedDrone ? (payloadWeight > maxPayload) : false;
+
+  // AI Predicted Battery Drain calculation — Scaled to drone rated capacity
+  const payloadRatio = Math.min(1.5, payloadWeight / Math.max(maxPayload, 1.0));
+  const drainRatePerKm = 0.95 + payloadRatio * 0.75;
+  const predictedDrainPct = Math.min(95, Math.round(flightDistanceKm * drainRatePerKm + 3.0));
+  const currentBattery = selectedDrone?.battery_pct !== undefined ? selectedDrone.battery_pct : 0;
+  const remainingBatteryOnArrival = selectedDrone ? Math.max(0, Math.round(currentBattery - predictedDrainPct)) : 0;
 
   // Battery Safety Margin Check
   const isBatteryCritical = selectedDrone ? (remainingBatteryOnArrival < 20 || currentBattery < (predictedDrainPct + 10)) : false;
@@ -185,12 +188,14 @@ export default function MissionDispatchPage({
         drone_model: selectedDrone.model || 'Phantom-Mumbai X7',
         current_battery_pct: currentBattery,
         max_payload_kg: maxPayload,
+        max_speed_kmh: selectedDrone.max_speed_kmh || 65.0,
         payload_weight_kg: payloadWeight,
         flight_distance_km: flightDistanceKm,
         predicted_drain_pct: predictedDrainPct,
         remaining_battery_pct: remainingBatteryOnArrival,
         destination_name: dest?.name || 'Customer Location',
         wind_gust_ms: 6.0,
+        priority_tier: cargoPriority,
       });
       setLlmResult(res);
     } catch (err) {
@@ -200,16 +205,26 @@ export default function MissionDispatchPage({
     }
   };
 
-  useEffect(() => {
-    if (!selectedDrone || drones.length === 0) {
-      setLlmResult(null);
+  // Check Deliverability Button Action
+  const handleCheckDeliverability = async () => {
+    const dest = getResolvedDestination();
+    if (!dest) {
+      toast('Please set a valid delivery destination', 'error');
       return;
     }
-    const timer = setTimeout(() => {
-      fetchLlmSafetyCheck();
-    }, 380);
-    return () => clearTimeout(timer);
-  }, [selectedDroneId, payloadWeight, destinationId, customLat, customLng, currentBattery]);
+    if (!selectedDrone || drones.length === 0) {
+      toast('Please enlist or select an active drone from your fleet', 'error');
+      return;
+    }
+    setHasEvaluated(true);
+    await fetchLlmSafetyCheck();
+  };
+
+  // Whenever user changes drone, destination, payload, priority tier, or custom coordinates, reset evaluation
+  useEffect(() => {
+    setHasEvaluated(false);
+    setLlmResult(null);
+  }, [selectedDroneId, payloadWeight, destinationId, customLat, customLng, cargoPriority]);
 
   // Combined AI & LLM Verdict
   const isLlmBlocked = llmResult?.verdict === 'BLOCKED';
@@ -217,23 +232,27 @@ export default function MissionDispatchPage({
   const isBlocked = isOverweight || isBatteryCritical || isLlmBlocked;
   const isCaution = !isBlocked && (isBatteryTight || isLlmCaution);
 
-  const aiVerdict = isBlocked ? (isOverweight ? 'OVERWEIGHT' : 'BLOCKED') : (isCaution ? 'CAUTION' : 'SAFE');
-  const aiVerdictColor = isBlocked ? 'var(--brand-danger)' : (isCaution ? 'var(--brand-warning)' : 'var(--brand-accent)');
-  const aiVerdictBg = isBlocked ? 'rgba(255,61,87,0.1)' : (isCaution ? 'rgba(251,191,36,0.1)' : 'rgba(6,255,165,0.07)');
-  const aiVerdictBorder = isBlocked ? 'rgba(255,61,87,0.4)' : (isCaution ? 'rgba(251,191,36,0.4)' : 'rgba(6,255,165,0.3)');
+  const aiVerdict = isBlocked ? (isOverweight ? 'OVERWEIGHT' : 'BLOCKED') : (isCaution ? 'ADVISORY' : 'SAFE');
+  const aiVerdictColor = isBlocked ? 'var(--brand-danger)' : (isCaution ? '#ff9f43' : 'var(--brand-accent)');
+  const aiVerdictBg = isBlocked ? 'rgba(255,61,87,0.1)' : (isCaution ? 'rgba(255,159,67,0.12)' : 'rgba(6,255,165,0.07)');
+  const aiVerdictBorder = isBlocked ? 'rgba(255,61,87,0.4)' : (isCaution ? 'rgba(255,159,67,0.45)' : 'rgba(6,255,165,0.3)');
 
   const aiVerdictLabel = llmResult?.status_label || (
     isOverweight ? '⛔ BLOCKED: CARGO OVERWEIGHT' :
-    isBatteryCritical ? '⚠️ UNSAFE: INSUFFICIENT CHARGE' :
-    isBatteryTight ? '⚡ CAUTION: TIGHT RESERVE MARGIN' :
-    '✅ DISPATCH APPROVED — SAFE FLIGHT'
+      isBatteryCritical ? '⚠️ UNSAFE: INSUFFICIENT CHARGE' :
+        isBatteryTight ? '⚡ ADVISORY: TIGHT RESERVE MARGIN' :
+          '✅ DISPATCH APPROVED — SAFE FLIGHT'
   );
 
   const aiVerdictMessage = llmResult?.analysis || (
     isOverweight ? `Package mass (${payloadWeight.toFixed(1)} kg) exceeds ${selectedDrone?.id} limit (${maxPayload.toFixed(1)} kg). Choose a heavier drone or reduce mass.` :
-    isBatteryCritical ? `Current battery (${currentBattery.toFixed(0)}%) too low for ${flightDistanceKm.toFixed(1)} km delivery. Predicted drain ${predictedDrainPct}% leaves only ${remainingBatteryOnArrival}%. Need >= ${(predictedDrainPct + 20)}% charge.` :
-    isBatteryTight ? `Mission feasible but leaves tight ${remainingBatteryOnArrival}% reserve upon delivery. Drone should RTB immediately post-drop.` :
-    `AI validated: Safe payload ratio (${((payloadWeight/maxPayload)*100).toFixed(0)}%) & healthy ${remainingBatteryOnArrival}% battery reserve upon arrival.`
+      isBatteryCritical ? (
+        currentBattery >= 90 && predictedDrainPct >= 75
+          ? `Transit distance (${flightDistanceKm.toFixed(1)} km) exceeds single-battery range for ${payloadWeight.toFixed(1)} kg cargo. Reduce mass or select closer destination.`
+          : `Current battery (${currentBattery.toFixed(0)}%) too low for ${flightDistanceKm.toFixed(1)} km delivery. Predicted drain ~${predictedDrainPct}% leaves only ${remainingBatteryOnArrival}%. Need >= ${Math.min(100, predictedDrainPct + 20)}% charge.`
+      ) :
+        isBatteryTight ? `Mission feasible but leaves tight ${remainingBatteryOnArrival}% reserve upon delivery. Drone should RTB immediately post-drop.` :
+          `AI validated: Safe payload ratio (${((payloadWeight / maxPayload) * 100).toFixed(0)}%) & healthy ${remainingBatteryOnArrival}% battery reserve upon arrival.`
   );
 
   // Register Drone with Mandatory Secret Code (Stored in MongoDB)
@@ -305,18 +324,22 @@ export default function MissionDispatchPage({
       toast('Please enlist or select an active drone from your fleet', 'error');
       return;
     }
+    if (!hasEvaluated) {
+      toast('Please check deliverability first to verify route & safety', 'warning');
+      return;
+    }
 
     setDispatchLoading(true);
     try {
       // Calculate A* optimal shortest path from Midpoint Hub avoiding Red Zones & Weather
       const route = await optimizeRoute({
-        origin:               { lat: currentHub.lat, lng: currentHub.lng },
-        destination:          { lat: dest.lat,       lng: dest.lng       },
-        payload_weight_kg:    payloadWeight,
-        wind_speed_ms:        5.0,
+        origin: { lat: currentHub.lat, lng: currentHub.lng },
+        destination: { lat: dest.lat, lng: dest.lng },
+        payload_weight_kg: payloadWeight,
+        wind_speed_ms: 5.0,
         max_battery_drain_pct: 90.0,
-        intermediate_stops:   [],
-        algorithm:            'astar',
+        intermediate_stops: [],
+        algorithm: 'astar',
       });
       onRouteResult?.(route);
 
@@ -556,8 +579,8 @@ export default function MissionDispatchPage({
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                     {[
                       { id: 'STANDARD', label: 'Standard', color: 'var(--text-secondary)' },
-                      { id: 'EXPRESS',  label: '⚡ Express', color: 'var(--brand-primary)' },
-                      { id: 'MEDICAL',  label: '🚑 Medical', color: 'var(--brand-danger)' },
+                      { id: 'EXPRESS', label: '⚡ Express', color: 'var(--brand-primary)' },
+                      { id: 'MEDICAL', label: '🚑 Medical', color: 'var(--brand-danger)' },
                     ].map(p => (
                       <button
                         key={p.id}
@@ -629,8 +652,8 @@ export default function MissionDispatchPage({
                 <div className="form-group" style={{ margin: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <label className="form-label" style={{ margin: 0, fontSize: 11 }}>Package Payload Mass</label>
-                    <span className="text-mono" style={{ fontSize: 14, fontWeight: 800, color: isOverweight ? 'var(--brand-danger)' : 'var(--brand-primary)' }}>
-                      {payloadWeight.toFixed(1)} kg {isOverweight ? '⚠️ (Exceeds Limit)' : ''}
+                    <span className="text-mono" style={{ fontSize: 14, fontWeight: 800, color: 'var(--brand-primary)' }}>
+                      {payloadWeight.toFixed(1)} kg
                     </span>
                   </div>
                   <input
@@ -650,7 +673,82 @@ export default function MissionDispatchPage({
                 </div>
               </div>
 
-              {/* Section 3: Mission Route Intel */}
+              {/* Section 3: Drone Airframe Selection */}
+              <div className="panel-section" style={{ margin: 0, padding: '12px 16px', background: 'rgba(5, 12, 24, 0.95)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+                <div className="panel-title" style={{ marginBottom: 10 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800 }}>
+                    <Navigation size={15} color="var(--brand-primary)" /> Select Fleet Airframe ({drones.length} active)
+                  </span>
+                </div>
+
+                <div style={{ marginBottom: 10 }}>
+                  <select
+                    className="form-select"
+                    value={selectedDroneId}
+                    onChange={e => setSelectedDroneId(e.target.value)}
+                    style={{ width: '100%', fontSize: 12.5, padding: '8px 12px' }}
+                  >
+                    {drones.map(d => {
+                      const isDelivering = d.status === 'DELIVERING';
+                      const isReturning = d.status === 'RETURNING';
+                      const isBusy = isDelivering || isReturning;
+                      const statusTag = isDelivering
+                        ? `🔴 IN USE — EN ROUTE (${d.order_id || 'MISSION'})`
+                        : isReturning
+                          ? '🔴 IN USE — RETURNING'
+                          : '🟢 READY / STANDBY';
+                      const speedStr = d.max_speed_kmh != null
+                        ? `${Number(d.max_speed_kmh).toFixed(0)} km/h`
+                        : d.speed_kmh != null && d.speed_kmh > 0
+                          ? `${Number(d.speed_kmh).toFixed(0)} km/h`
+                          : '65 km/h';
+                      return (
+                        <option key={d.id} value={d.id} disabled={isBusy}>
+                          {isBusy ? '🔒 ' : ''}{d.id} — {d.model} • {speedStr} [{statusTag}]
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {selectedDrone && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 8,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(8,15,31,0.6)',
+                    border: '1px solid var(--border-subtle)',
+                    textAlign: 'center',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>UNIT ID</div>
+                      <strong style={{ color: 'var(--text-primary)', fontSize: 13 }}>{selectedDrone.id}</strong>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>MAX SPEED</div>
+                      <strong style={{ color: 'var(--brand-accent)', fontSize: 13 }}>
+                        {selectedDrone.max_speed_kmh != null ? `${selectedDrone.max_speed_kmh} km/h` : selectedDrone.speed_kmh != null && selectedDrone.speed_kmh > 0 ? `${Number(selectedDrone.speed_kmh).toFixed(0)} km/h` : '65 km/h'}
+                      </strong>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>MAX PAYLOAD</div>
+                      <strong style={{ color: 'var(--brand-primary)', fontSize: 13 }}>
+                        {selectedDrone.max_payload_kg != null ? `${selectedDrone.max_payload_kg} kg` : selectedDrone.payload_weight_kg != null ? `${selectedDrone.payload_weight_kg} kg` : '4.0 kg'}
+                      </strong>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>BATTERY</div>
+                      <strong style={{ color: (selectedDrone.battery_pct ?? 100) > 50 ? 'var(--brand-accent)' : 'var(--brand-warning)', fontSize: 13 }}>
+                        {selectedDrone.battery_pct != null ? `${Number(selectedDrone.battery_pct).toFixed(0)}%` : '100%'}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section 4: Mission Route Intel */}
               <div style={{
                 margin: 0,
                 padding: '11px 16px',
@@ -707,295 +805,394 @@ export default function MissionDispatchPage({
 
             </div>
 
-            {/* ── COLUMN 2: Airframe & AI Pre-flight Check ── */}
+            {/* ── COLUMN 2: AI Pre-flight Prediction, Evaluation & Dispatch Command ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-              {/* Section 3: Drone Airframe Selection */}
-              <div className="panel-section" style={{ margin: 0, padding: '12px 16px', background: 'rgba(5, 12, 24, 0.95)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
-                <div className="panel-title" style={{ marginBottom: 10 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800 }}>
-                    <Navigation size={15} color="var(--brand-primary)" /> Select Fleet Airframe ({drones.length} active)
+              {/* Header Status Bar for Right Column */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '11px 16px',
+                background: 'rgba(5, 12, 24, 0.95)',
+                borderRadius: 12,
+                border: '1px solid var(--border-subtle)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Sparkles size={15} color="var(--brand-primary)" />
+                  <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
+                    PRE-FLIGHT INTELLIGENCE & EVALUATION
                   </span>
                 </div>
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  background: !hasEvaluated
+                    ? 'rgba(255,255,255,0.06)'
+                    : isBlocked
+                      ? 'rgba(255,61,87,0.18)'
+                      : isCaution
+                        ? 'rgba(255,159,67,0.18)'
+                        : 'rgba(6,255,165,0.15)',
+                  color: !hasEvaluated
+                    ? 'var(--text-muted)'
+                    : isBlocked
+                      ? '#ff3d57'
+                      : isCaution
+                        ? '#ff9f43'
+                        : '#06ffa5',
+                  border: !hasEvaluated
+                    ? '1px solid rgba(255,255,255,0.1)'
+                    : `1px solid ${aiVerdictBorder}`,
+                }}>
+                  {!hasEvaluated ? 'STEP 2: AWAITING CHECK' : aiVerdict}
+                </span>
+              </div>
 
-                <div style={{ marginBottom: 10 }}>
-                  <select
-                    className="form-select"
-                    value={selectedDroneId}
-                    onChange={e => setSelectedDroneId(e.target.value)}
-                    style={{ width: '100%', fontSize: 12.5, padding: '8px 12px' }}
-                  >
-                    {drones.map(d => {
-                      const isDelivering = d.status === 'DELIVERING';
-                      const isReturning = d.status === 'RETURNING';
-                      const isBusy = isDelivering || isReturning;
-                      const statusTag = isDelivering
-                        ? `🔴 IN USE — EN ROUTE (${d.order_id || 'MISSION'})`
-                        : isReturning
-                        ? '🔴 IN USE — RETURNING'
-                        : '🟢 READY / STANDBY';
-                      return (
-                        <option key={d.id} value={d.id} disabled={isBusy}>
-                          {isBusy ? '🔒 ' : ''}{d.id} — {d.model} • {d.battery_pct?.toFixed(0)}% Bat [{statusTag}]
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
+              {/* Standby Card: Shown before clicking "Check Deliverability" */}
+              {!hasEvaluated && !llmLoading ? (
+                <div style={{
+                  background: 'rgba(5, 12, 24, 0.95)',
+                  border: '1px dashed rgba(0, 212, 255, 0.35)',
+                  borderRadius: 12,
+                  padding: '30px 20px',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 14,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                }}>
+                  <div style={{
+                    width: 58,
+                    height: 58,
+                    borderRadius: '50%',
+                    background: 'rgba(0, 212, 255, 0.1)',
+                    border: '1px solid rgba(0, 212, 255, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 0 24px rgba(0, 212, 255, 0.25)',
+                  }}>
+                    <Bot size={28} color="var(--brand-primary)" />
+                  </div>
 
-                {selectedDrone && (
+                  <div>
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: 16, fontWeight: 900, color: 'var(--text-primary)' }}>
+                      Pre-Flight Feasibility Check Required
+                    </h3>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', maxWidth: 420, lineHeight: 1.5 }}>
+                      Select your destination and drone on the left, then click <strong style={{ color: 'var(--brand-primary)' }}>"Evaluate Feasibility Now"</strong> below to run Gradient Boosting battery drain prediction & Gemini LLM flight safety advisory.
+                    </p>
+                  </div>
+
+                  {/* Flight Parameters Summary Pill */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: 8,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    background: 'rgba(8,15,31,0.6)',
-                    border: '1px solid var(--border-subtle)',
-                    textAlign: 'center',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 10,
+                    width: '100%',
+                    maxWidth: 460,
+                    marginTop: 4,
                   }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>UNIT ID</div>
-                      <strong style={{ color: 'var(--text-primary)', fontSize: 13 }}>{selectedDrone.id}</strong>
+                    <div style={{ background: 'rgba(8,15,31,0.7)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '10px 8px' }}>
+                      <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>DESTINATION</div>
+                      <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff', marginTop: 3, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        {resolvedDest?.name?.split(' ')[0] || 'Selected'}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--brand-primary)', fontFamily: 'JetBrains Mono, monospace' }}>{flightDistanceKm.toFixed(1)} km</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>MAX SPEED</div>
-                      <strong style={{ color: 'var(--brand-accent)', fontSize: 13 }}>
-                        {selectedDrone.max_speed_kmh != null ? `${selectedDrone.max_speed_kmh} km/h` : selectedDrone.speed_kmh != null && selectedDrone.speed_kmh > 0 ? `${Number(selectedDrone.speed_kmh).toFixed(0)} km/h` : '65 km/h'}
-                      </strong>
+                    <div style={{ background: 'rgba(8,15,31,0.7)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '10px 8px' }}>
+                      <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>AIRFRAME</div>
+                      <div style={{ fontSize: 11.5, fontWeight: 800, color: '#06ffa5', marginTop: 3 }}>
+                        {selectedDrone?.id || 'None'}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{selectedDrone?.battery_pct ?? 100}% Bat</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>MAX PAYLOAD</div>
-                      <strong style={{ color: 'var(--brand-primary)', fontSize: 13 }}>
-                        {selectedDrone.max_payload_kg != null ? `${selectedDrone.max_payload_kg} kg` : selectedDrone.payload_weight_kg != null ? `${selectedDrone.payload_weight_kg} kg` : '4.0 kg'}
-                      </strong>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>BATTERY</div>
-                      <strong style={{ color: (selectedDrone.battery_pct ?? 100) > 50 ? 'var(--brand-accent)' : 'var(--brand-warning)', fontSize: 13 }}>
-                        {selectedDrone.battery_pct != null ? `${Number(selectedDrone.battery_pct).toFixed(0)}%` : '100%'}
-                      </strong>
+                    <div style={{ background: 'rgba(8,15,31,0.7)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '10px 8px' }}>
+                      <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>CARGO MASS</div>
+                      <div style={{ fontSize: 11.5, fontWeight: 800, color: isOverweight ? 'var(--brand-danger)' : 'var(--brand-primary)', marginTop: 3 }}>
+                        {payloadWeight.toFixed(1)} kg
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Max {maxPayload}kg</div>
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Section 4a: ML Battery Prediction Model */}
-              <div className="panel-section" style={{
-                background: 'rgba(5, 12, 24, 0.95)',
-                border: '1px solid rgba(139, 92, 246, 0.35)',
-                borderRadius: 12,
-                padding: '12px 16px',
-                margin: 0,
-                boxShadow: '0 0 16px rgba(139,92,246,0.1)',
-              }}>
-                {/* ML Card Header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 15 }}>🧠</span>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      ML Battery Prediction
-                    </span>
-                    <span style={{
-                      fontSize: 9.5,
-                      fontWeight: 700,
-                      padding: '2px 7px',
-                      borderRadius: 5,
-                      background: 'rgba(139,92,246,0.15)',
-                      color: '#a78bfa',
-                      border: '1px solid rgba(139,92,246,0.3)',
-                    }}>
-                      Gradient Boosting
-                    </span>
-                  </div>
-                  <span style={{
-                    fontSize: 9.5,
-                    color: 'var(--text-muted)',
-                    fontStyle: 'italic',
-                  }}>
-                    scikit-learn · 60 estimators
-                  </span>
-                </div>
-
-                {/* ML Metrics Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, margin: 0 }}>
-                  <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
-                    <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>DISTANCE</div>
-                    <div className="text-mono" style={{ fontSize: 14, fontWeight: 800, color: '#c4b5fd' }}>
-                      {flightDistanceKm.toFixed(1)} km
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
-                    <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>PRED. DRAIN</div>
-                    <div className="text-mono" style={{ fontSize: 14, fontWeight: 800, color: '#f59e0b' }}>
-                      ~{predictedDrainPct}%
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
-                    <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>ON ARRIVAL</div>
-                    <div className="text-mono" style={{
-                      fontSize: 14,
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleCheckDeliverability}
+                    style={{
+                      marginTop: 4,
+                      padding: '9px 22px',
+                      fontSize: 12.5,
                       fontWeight: 800,
-                      color: remainingBatteryOnArrival < 20 ? 'var(--brand-danger)' : remainingBatteryOnArrival < 35 ? 'var(--brand-warning)' : '#06ffa5'
-                    }}>
-                      {remainingBatteryOnArrival}%
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
-                    <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>PAYLOAD</div>
-                    <div className="text-mono" style={{
-                      fontSize: 14,
-                      fontWeight: 800,
-                      color: isOverweight ? 'var(--brand-danger)' : '#06ffa5'
-                    }}>
-                      {payloadWeight.toFixed(1)}/{maxPayload.toFixed(0)}kg
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 4b: LLM Safety Advisor */}
-              <div className="panel-section" style={{
-                background: aiVerdictBg,
-                border: `1px solid ${aiVerdictBorder}`,
-                borderRadius: 12,
-                padding: '12px 16px',
-                margin: 0,
-                boxShadow: `0 0 16px ${aiVerdictBorder}`,
-              }}>
-                {/* LLM Card Header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 9 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Sparkles size={15} color={aiVerdictColor} />
-                    <span style={{ fontSize: 13, fontWeight: 800, color: aiVerdictColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      LLM Safety Advisor
-                    </span>
-                    <span style={{
-                      fontSize: 9.5,
-                      fontWeight: 700,
-                      padding: '2px 7px',
-                      borderRadius: 5,
-                      background: 'rgba(0, 212, 255, 0.12)',
-                      color: 'var(--brand-primary)',
-                      border: '1px solid rgba(0, 212, 255, 0.3)',
-                      display: 'inline-flex',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: 4,
-                    }}>
-                      <Bot size={10} />
-                      {llmLoading ? 'Analyzing...' : '✨ Gemini 3.8 Flash'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button
-                      type="button"
-                      onClick={fetchLlmSafetyCheck}
-                      title="Re-run LLM Safety Evaluation"
-                      className="btn btn-ghost btn-sm"
-                      style={{ padding: '2px 7px', fontSize: 10.5, color: 'var(--text-muted)', cursor: 'pointer' }}
-                    >
-                      <RefreshCw size={11} className={llmLoading ? 'spin-anim' : ''} />
-                    </button>
-                    <span style={{
-                      fontSize: 10.5,
-                      fontWeight: 800,
-                      padding: '2px 9px',
-                      borderRadius: 5,
-                      background: aiVerdictBg,
-                      color: aiVerdictColor,
-                      border: `1px solid ${aiVerdictBorder}`,
-                    }}>
-                      {aiVerdict}
-                    </span>
-                  </div>
+                      gap: 8,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Zap size={14} /> Evaluate Feasibility Now
+                  </button>
                 </div>
+              ) : (
+                <>
+                  {/* Section 4a: ML Battery Prediction Model */}
+                  <div className="panel-section" style={{
+                    background: 'rgba(5, 12, 24, 0.95)',
+                    border: '1px solid rgba(139, 92, 246, 0.35)',
+                    borderRadius: 12,
+                    padding: '12px 16px',
+                    margin: 0,
+                    boxShadow: '0 0 16px rgba(139,92,246,0.1)',
+                  }}>
+                    {/* ML Card Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 15 }}>🧠</span>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          ML Battery Prediction
+                        </span>
+                        <span style={{
+                          fontSize: 9.5,
+                          fontWeight: 700,
+                          padding: '2px 7px',
+                          borderRadius: 5,
+                          background: 'rgba(139,92,246,0.15)',
+                          color: '#a78bfa',
+                          border: '1px solid rgba(139,92,246,0.3)',
+                        }}>
+                          Gradient Boosting
+                        </span>
+                      </div>
+                      <span style={{
+                        fontSize: 9.5,
+                        color: 'var(--text-muted)',
+                        fontStyle: 'italic',
+                      }}>
+                        scikit-learn · 60 estimators
+                      </span>
+                    </div>
 
-                {/* LLM Verdict Box */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  fontSize: 12,
-                  lineHeight: '1.45',
-                  color: aiVerdictColor,
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  background: 'rgba(0,0,0,0.35)',
-                  marginBottom: llmResult?.recommendation ? 8 : 0,
-                }}>
-                  {isOverweight ? (
-                    <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                  ) : isBatteryCritical ? (
-                    <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                  ) : isBatteryTight ? (
-                    <Zap size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                  ) : (
-                    <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <strong style={{ fontSize: 12.5 }}>{aiVerdictLabel}</strong>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: 11.5, marginTop: 2 }}>
-                      {aiVerdictMessage}
+                    {/* ML Metrics Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, margin: 0 }}>
+                      <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
+                        <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>DISTANCE</div>
+                        <div className="text-mono" style={{ fontSize: 14, fontWeight: 800, color: '#c4b5fd' }}>
+                          {flightDistanceKm.toFixed(1)} km
+                        </div>
+                      </div>
+                      <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
+                        <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>PRED. DRAIN</div>
+                        <div className="text-mono" style={{ fontSize: 14, fontWeight: 800, color: '#f59e0b' }}>
+                          ~{predictedDrainPct}%
+                        </div>
+                      </div>
+                      <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
+                        <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>ON ARRIVAL</div>
+                        <div className="text-mono" style={{
+                          fontSize: 14,
+                          fontWeight: 800,
+                          color: remainingBatteryOnArrival < 20 ? 'var(--brand-danger)' : remainingBatteryOnArrival < 35 ? 'var(--brand-warning)' : '#06ffa5'
+                        }}>
+                          {remainingBatteryOnArrival}%
+                        </div>
+                      </div>
+                      <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '9px 6px', borderRadius: 8, textAlign: 'center' }}>
+                        <div style={{ fontSize: 9.5, color: '#a78bfa', marginBottom: 3, fontWeight: 600 }}>PAYLOAD</div>
+                        <div className="text-mono" style={{
+                          fontSize: 14,
+                          fontWeight: 800,
+                          color: isOverweight ? 'var(--brand-danger)' : '#06ffa5'
+                        }}>
+                          {payloadWeight.toFixed(1)}/{maxPayload.toFixed(0)}kg
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* LLM Recommendation */}
-                {llmResult?.recommendation && (
-                  <div style={{
-                    background: 'rgba(0,0,0,0.25)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: 7,
-                    padding: '7px 12px',
-                    fontSize: 11,
-                    color: 'var(--text-muted)',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 6,
+                  {/* Section 4b: LLM Safety Advisor */}
+                  <div className="panel-section" style={{
+                    background: aiVerdictBg,
+                    border: `1px solid ${aiVerdictBorder}`,
+                    borderRadius: 12,
+                    padding: '12px 16px',
+                    margin: 0,
+                    boxShadow: `0 0 16px ${aiVerdictBorder}`,
                   }}>
-                    <span style={{ fontSize: 12, flexShrink: 0 }}>💡</span>
-                    <span>
-                      <strong style={{ color: aiVerdictColor }}>Recommendation: </strong>
-                      {llmResult.recommendation}
-                    </span>
+                    {/* LLM Card Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 9 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Sparkles size={15} color={aiVerdictColor} />
+                        <span style={{ fontSize: 13, fontWeight: 800, color: aiVerdictColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          LLM Safety Advisor
+                        </span>
+                        <span style={{
+                          fontSize: 9.5,
+                          fontWeight: 700,
+                          padding: '2px 7px',
+                          borderRadius: 5,
+                          background: 'rgba(0, 212, 255, 0.12)',
+                          color: 'var(--brand-primary)',
+                          border: '1px solid rgba(0, 212, 255, 0.3)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}>
+                          <Bot size={10} />
+                          {llmLoading ? 'Analyzing...' : '✨ Gemini 3.8 Flash'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={fetchLlmSafetyCheck}
+                          title="Re-run LLM Safety Evaluation"
+                          className="btn btn-ghost btn-sm"
+                          style={{ padding: '2px 7px', fontSize: 10.5, color: 'var(--text-muted)', cursor: 'pointer' }}
+                        >
+                          <RefreshCw size={11} className={llmLoading ? 'spin-anim' : ''} />
+                        </button>
+                        <span style={{
+                          fontSize: 10.5,
+                          fontWeight: 800,
+                          padding: '2px 9px',
+                          borderRadius: 5,
+                          background: aiVerdictBg,
+                          color: aiVerdictColor,
+                          border: `1px solid ${aiVerdictBorder}`,
+                        }}>
+                          {aiVerdict}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* LLM Verdict Box */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      fontSize: 12,
+                      lineHeight: '1.45',
+                      color: aiVerdictColor,
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      background: 'rgba(0,0,0,0.35)',
+                      marginBottom: llmResult?.recommendation ? 8 : 0,
+                    }}>
+                      {isOverweight ? (
+                        <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                      ) : isBatteryCritical ? (
+                        <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                      ) : isBatteryTight ? (
+                        <Zap size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                      ) : (
+                        <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ fontSize: 12.5 }}>{aiVerdictLabel}</strong>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: 11.5, marginTop: 2 }}>
+                          {aiVerdictMessage}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* LLM Recommendation */}
+                    {llmResult?.recommendation && (
+                      <div style={{
+                        background: 'rgba(0,0,0,0.25)',
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: 7,
+                        padding: '7px 12px',
+                        fontSize: 11,
+                        color: 'var(--text-muted)',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 6,
+                      }}>
+                        <span style={{ fontSize: 12, flexShrink: 0 }}>💡</span>
+                        <span>
+                          <strong style={{ color: aiVerdictColor }}>Recommendation: </strong>
+                          {llmResult.recommendation}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
+
+              {/* Analyzing indicator when LLM is in-flight */}
+              {llmLoading && (
+                <div style={{
+                  width: '100%',
+                  padding: '14px 20px',
+                  borderRadius: 10,
+                  background: 'rgba(0, 212, 255, 0.08)',
+                  border: '1px solid rgba(0, 212, 255, 0.35)',
+                  color: 'var(--brand-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  boxShadow: '0 0 20px rgba(0, 212, 255, 0.15)',
+                  marginTop: 4,
+                }}>
+                  <RefreshCw size={15} className="spin-anim" />
+                  <span>Analyzing Flight Feasibility & Safety with Gemini LLM...</span>
+                </div>
+              )}
+
+              {/* ── BIG GLOWING LAUNCH MISSION BUTTON (APPEARS ONLY AFTER LLM EVALUATION) ── */}
+              {hasEvaluated && llmResult && !llmLoading && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%',
+                    padding: '14px 22px',
+                    fontSize: 14.5,
+                    fontWeight: 900,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 12,
+                    background: isBlocked
+                      ? 'rgba(255,61,87,0.2)'
+                      : 'linear-gradient(135deg, #00d4ff 0%, #06ffa5 100%)',
+                    color: isBlocked
+                      ? '#ff3d57'
+                      : '#020811',
+                    border: isBlocked
+                      ? '1px solid rgba(255,61,87,0.5)'
+                      : 'none',
+                    borderRadius: 10,
+                    cursor: isBlocked || dispatchLoading ? 'not-allowed' : 'pointer',
+                    opacity: isBlocked ? 0.75 : 1,
+                    boxShadow: isBlocked ? 'none' : '0 6px 26px rgba(0, 212, 255, 0.4)',
+                    letterSpacing: '0.8px',
+                    textTransform: 'uppercase',
+                    marginTop: 4,
+                  }}
+                  onClick={handleAssignAndDispatch}
+                  disabled={dispatchLoading || isBlocked}
+                  id="launch-mission-btn"
+                >
+                  <Send size={17} />
+                  {dispatchLoading
+                    ? 'Computing A* Path & Launching Mission...'
+                    : isBlocked
+                      ? 'Dispatch Interlock Active — Resolve Warnings'
+                      : '🚀 Launch Autonomous Delivery Mission'}
+                </button>
+              )}
 
             </div>
           </div>
-
-          {/* ── BIG GLOWING LAUNCH MISSION BUTTON ── */}
-          <button
-            type="button"
-            className="btn btn-primary"
-            style={{
-              padding: '14px 24px',
-              fontSize: 15,
-              fontWeight: 900,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              background: isBlocked
-                ? 'rgba(255,61,87,0.2)'
-                : 'linear-gradient(135deg, #00d4ff 0%, #06ffa5 100%)',
-              color: isBlocked ? '#ff3d57' : '#020811',
-              border: isBlocked ? '1px solid rgba(255,61,87,0.5)' : 'none',
-              borderRadius: 10,
-              cursor: isBlocked || dispatchLoading ? 'not-allowed' : 'pointer',
-              opacity: isBlocked ? 0.75 : 1,
-              boxShadow: isBlocked ? 'none' : '0 6px 26px rgba(0, 212, 255, 0.4)',
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
-            }}
-            onClick={handleAssignAndDispatch}
-            disabled={dispatchLoading || isBlocked}
-            id="launch-mission-btn"
-          >
-            <Send size={18} />
-            {dispatchLoading ? 'Computing Genetic Algorithm Route & Launching Mission...' : isBlocked ? 'Dispatch Interlock Active — Resolve Warnings' : '🚀 Launch Autonomous Delivery Mission'}
-          </button>
 
         </div>
       </div>

@@ -38,6 +38,9 @@ def _get_fallback_verdict(data: dict, note: str = "") -> dict:
     is_battery_tight = not is_battery_critical and remaining_battery < 35.0
     is_high_wind = wind_gust > 15.0
 
+    priority_tier = str(data.get("priority_tier", "STANDARD")).upper()
+    max_speed_kmh = float(data.get("max_speed_kmh", 65.0))
+
     if is_overweight:
         verdict = "BLOCKED"
         status_label = "⛔ BLOCKED: CARGO OVERWEIGHT"
@@ -57,18 +60,26 @@ def _get_fallback_verdict(data: dict, note: str = "") -> dict:
         status_label = "⚠️ UNSAFE: INSUFFICIENT CHARGE"
         risk_score = 90
         key_risks = [
-            f"Depletion risk: Predicted drain {predicted_drain:.0f}% leaves only {remaining_battery:.0f}% reserve",
+            f"Depletion risk: Predicted drain ~{predicted_drain:.0f}% leaves only {remaining_battery:.0f}% reserve upon arrival",
             "Emergency landing or forced RTB inevitable before reaching delivery drop zone",
         ]
-        analysis = (
-            f"Mission rejected: Drone battery ({current_battery:.0f}%) insufficient for {distance_km:.1f} km transit to {dest_name}. "
-            f"Minimum {predicted_drain + 25:.0f}% charge required to ensure emergency safety margins."
-        )
-        recommendation = "Charge drone to at least 85% or assign an alternate fleet unit on hot standby."
+        if current_battery >= 90.0 and predicted_drain >= 75.0:
+            analysis = (
+                f"Mission rejected: Transit distance ({distance_km:.1f} km) exceeds single-battery range for {payload:.1f} kg cargo. "
+                f"Even with 100% battery, predicted drain (~{predicted_drain:.0f}%) breaches mandatory 20% emergency reserve."
+            )
+            recommendation = "Reduce package payload mass or assign a high-capacity long-range airframe."
+        else:
+            required_charge = min(100.0, round(predicted_drain + 20.0))
+            analysis = (
+                f"Mission rejected: Drone battery ({current_battery:.0f}%) insufficient for {distance_km:.1f} km transit to {dest_name}. "
+                f"Minimum {required_charge:.0f}% charge required to ensure emergency safety margins."
+            )
+            recommendation = f"Recharge drone to at least {required_charge:.0f}% before launching this mission."
 
     elif is_battery_tight or is_high_wind:
         verdict = "CAUTION"
-        status_label = "⚡ CAUTION: TIGHT RESERVE MARGIN"
+        status_label = "⚡ ADVISORY: TIGHT RESERVE MARGIN"
         risk_score = 55
         key_risks = [
             f"Tight battery reserve of {remaining_battery:.0f}% upon arrival",
@@ -80,7 +91,76 @@ def _get_fallback_verdict(data: dict, note: str = "") -> dict:
         )
         recommendation = "Maintain altitude between 100m–120m to minimize ground turbulence. Execute immediate RTB protocol."
 
+    # Priority Tier specific evaluations
+    elif priority_tier == "EXPRESS":
+        payload_ratio = int((payload / max(max_payload, 0.1)) * 100)
+        if max_speed_kmh >= 75.0:
+            verdict = "SAFE"
+            status_label = "⚡ HIGH-SPEED EXPRESS APPROVED"
+            risk_score = 10
+            key_risks = [
+                f"High-speed cruising ({max_speed_kmh:.0f} km/h) delivers rapid express SLA",
+                f"Comfortable {remaining_battery:.0f}% arrival battery reserve",
+            ]
+            analysis = (
+                f"Express Priority Optimal: {drone_id} boasts high velocity ({max_speed_kmh:.0f} km/h), "
+                f"ensuring fast SLA delivery for {distance_km:.1f} km transit to {dest_name} with {remaining_battery:.0f}% arrival battery."
+            )
+            est_mins = max(1, int((distance_km / max_speed_kmh) * 60))
+            recommendation = f"Optimal Express airframe selected. Estimated flight time: ~{est_mins} mins. Clear for express launch."
+        else:
+            verdict = "CAUTION"
+            status_label = "⚡ ADVISORY: SPEED OPTIMIZATION RECOMMENDED"
+            risk_score = 45
+            key_risks = [
+                f"Airframe cruising speed ({max_speed_kmh:.0f} km/h) is below optimal express SLA target (>=75 km/h)",
+                f"Transit time may lag express delivery expectations",
+            ]
+            analysis = (
+                f"Express Priority Advisory: {drone_id} is safe to fly, but its moderate speed ({max_speed_kmh:.0f} km/h) "
+                f"may not meet urgent express delivery SLAs for {distance_km:.1f} km route."
+            )
+            recommendation = "Consider reassigning to a high-speed drone (e.g. Falcon-Marine Lite or 85 km/h unit) for optimal express delivery speed."
+
+    elif priority_tier == "MEDICAL":
+        payload_ratio = int((payload / max(max_payload, 0.1)) * 100)
+        is_good_speed = max_speed_kmh >= 70.0
+        is_good_weight = (payload / max(max_payload, 0.1)) <= 0.70 and max_payload >= 4.0
+        is_good_battery = remaining_battery >= 25.0
+
+        if is_good_speed and is_good_weight and is_good_battery:
+            verdict = "SAFE"
+            status_label = "🚑 MEDICAL PRIORITY CERTIFIED"
+            risk_score = 8
+            key_risks = [
+                f"Dual Advantage: High speed ({max_speed_kmh:.0f} km/h) + ample payload stability buffer ({payload_ratio}% capacity)",
+                f"Robust {remaining_battery:.0f}% arrival battery guarantees emergency reserve",
+            ]
+            analysis = (
+                f"Medical Emergency Certified: {drone_id} provides both high velocity ({max_speed_kmh:.0f} km/h) for rapid medical delivery "
+                f"and generous payload margin ({payload:.1f}kg on {max_payload:.1f}kg airframe), guaranteeing maximum flight stability for sensitive medical cargo."
+            )
+            recommendation = "Emergency medical corridor authorized. Clear for priority vertical launch."
+        else:
+            verdict = "CAUTION"
+            status_label = "🚑 ADVISORY: MEDICAL FLEET UPGRADE RECOMMENDED"
+            risk_score = 55
+            deficits = []
+            if not is_good_speed: deficits.append(f"lower speed ({max_speed_kmh:.0f} km/h)")
+            if not is_good_weight: deficits.append(f"narrow payload margin ({payload_ratio}% of max)")
+            if not is_good_battery: deficits.append(f"tight battery reserve ({remaining_battery:.0f}%)")
+            key_risks = [
+                f"Medical transport requires both high speed and superior payload stability buffer",
+                f"Current drone traits: {', '.join(deficits)}",
+            ]
+            analysis = (
+                f"Medical Priority Advisory: {drone_id} has {', '.join(deficits)}. "
+                f"Medical emergency deliveries strictly prioritize drones with both high speed (>=70 km/h) and high weight capacity margin."
+            )
+            recommendation = "Recommend switching to a high-capacity, high-speed drone (e.g. OctoCopter HeavyLifter 85 km/h, 9 kg) for medical emergency missions."
+
     else:
+        # STANDARD TIER
         verdict = "SAFE"
         status_label = "✅ DISPATCH APPROVED — SAFE FLIGHT"
         risk_score = 12
@@ -90,10 +170,10 @@ def _get_fallback_verdict(data: dict, note: str = "") -> dict:
             f"Safe {remaining_battery:.0f}% battery reserve maintained upon target arrival",
         ]
         analysis = (
-            f"AI Pre-Flight Confirmed: Nominal aerodynamics for {distance_km:.1f} km route to {dest_name}. "
+            f"Standard Delivery Approved: {drone_id} nominal for {distance_km:.1f} km route to {dest_name}. "
             f"Safe payload ratio ({payload_ratio}%) and robust {remaining_battery:.0f}% arrival battery."
         )
-        recommendation = "Proceed with automated dispatch. Clear for immediate vertiport launch."
+        recommendation = "Standard dispatch verified. Clear for immediate vertiport launch."
 
     return {
         "verdict": verdict,
@@ -111,6 +191,8 @@ def _get_fallback_verdict(data: dict, note: str = "") -> dict:
 def _build_prompt(data: dict) -> str:
     payload = float(data.get("payload_weight_kg", 2.0))
     max_payload = float(data.get("max_payload_kg", 3.5))
+    max_speed_kmh = float(data.get("max_speed_kmh", 65.0))
+    priority_tier = str(data.get("priority_tier", "STANDARD")).upper()
     current_battery = float(data.get("current_battery_pct", 100.0))
     predicted_drain = float(data.get("predicted_drain_pct", 25.0))
     remaining_battery = max(0.0, current_battery - predicted_drain)
@@ -125,7 +207,9 @@ You are AeroRoute's Autonomous Flight Safety & Mission Dispatch AI Advisor for M
 Analyze the following drone flight parameters and provide a real-time safety evaluation.
 
 FLIGHT TELEMETRY:
+- Priority Tier: {priority_tier}
 - Drone ID: {drone_id} ({drone_model})
+- Max Cruising Speed: {max_speed_kmh:.0f} km/h
 - Battery Level: {current_battery:.1f}%
 - Rated Max Payload: {max_payload:.1f} kg
 - Assigned Cargo Mass: {payload:.1f} kg ({(payload/max_payload)*100:.0f}% of max capacity)
@@ -134,20 +218,24 @@ FLIGHT TELEMETRY:
 - Projected Reserve on Arrival: ~{remaining_battery:.0f}%
 - Coastal Wind Gust: {wind_gust:.1f} m/s
 
-RULES:
-1. If cargo ({payload:.1f} kg) > max payload ({max_payload:.1f} kg) -> verdict MUST be "BLOCKED" (Overweight).
-2. If remaining battery on arrival < 20% or current battery < predicted_drain + 10% -> verdict MUST be "BLOCKED" (Critical battery).
-3. If remaining battery is 20-35% or wind > 14 m/s -> verdict MUST be "CAUTION".
-4. Otherwise -> verdict is "SAFE".
+EVALUATION RULES:
+1. OVERWEIGHT: If cargo ({payload:.1f} kg) > max payload ({max_payload:.1f} kg) -> verdict MUST be "BLOCKED" (Overweight).
+2. CRITICAL BATTERY: If remaining battery on arrival < 20% or current battery < predicted_drain + 10% -> verdict MUST be "BLOCKED". If current battery is ~100%, state transit distance exceeds single-battery range.
+3. CAUTION: If remaining battery is 20-35% or wind > 14 m/s -> verdict is "CAUTION".
+
+PRIORITY TIER CRITERIA (Apply when battery and weight are safe):
+- STANDARD: Standard delivery. Any airframe within safe weight and battery limits is approved without requiring high speed.
+- EXPRESS: Time-critical! Cruising speed is paramount. Drones with speed >= 75 km/h are optimal (verdict: SAFE, status: '⚡ HIGH-SPEED EXPRESS APPROVED'). If drone speed < 65 km/h, mark CAUTION with an advisory label (status: '⚡ ADVISORY: SPEED OPTIMIZATION RECOMMENDED') and advise switching to a faster drone.
+- MEDICAL: Life-critical emergency! Requires BOTH high speed (>= 70 km/h) AND strong weight capacity buffer (cargo <= 70% of max payload, max payload >= 4kg) for maximum flight stability. Praise drones with both; if the drone lacks speed or has a tight payload/battery buffer, mark CAUTION with an advisory label (status: '🚑 ADVISORY: MEDICAL FLEET UPGRADE RECOMMENDED') and recommend a heavy-lift high-speed drone.
 
 Respond ONLY with a valid JSON object matching EXACTLY this structure (no markdown fences, no code blocks):
 {{
   "verdict": "SAFE" | "CAUTION" | "BLOCKED",
-  "status_label": "Short label with emoji, e.g. '✅ DISPATCH APPROVED — SAFE FLIGHT' or '⛔ BLOCKED: CARGO OVERWEIGHT'",
-  "analysis": "1-2 concise, professional sentences analyzing why this flight is safe or hazardous",
+  "status_label": "Short label with emoji, e.g. '✅ DISPATCH APPROVED' or '⚡ HIGH-SPEED EXPRESS APPROVED' or '🚑 MEDICAL PRIORITY CERTIFIED'",
+  "analysis": "1-2 concise, professional sentences analyzing flight safety and priority tier alignment",
   "risk_score": 15,
   "key_risks": ["Risk point 1", "Risk point 2"],
-  "recommendation": "1 sentence practical action for the delivery agent/dispatcher"
+  "recommendation": "1 sentence practical action for the dispatcher"
 }}
 """
 

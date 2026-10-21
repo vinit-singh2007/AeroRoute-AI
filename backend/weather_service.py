@@ -56,6 +56,7 @@ class WeatherService:
             "wind_direction_deg": 300,
             "condition": "Clear Sky",
             "weather_code": 0,
+            "precipitation_mm": 0.0,
             "updated_at": time.strftime("%H:%M:%S"),
         }
 
@@ -71,7 +72,7 @@ class WeatherService:
         url = (
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={lat:.4f}&longitude={lon:.4f}&"
-            f"current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code&"
+            f"current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,precipitation&"
             f"wind_speed_unit=ms"
         )
 
@@ -86,6 +87,8 @@ class WeatherService:
                     wind_speed = float(data.get("wind_speed_10m", 3.5))
                     wind_gust = float(data.get("wind_gusts_10m", max(wind_speed * 1.5, 6.0)))
 
+                    precipitation = float(data.get("precipitation", 0.0))
+
                     weather_data = {
                         "source": "OPEN_METEO_API",
                         "is_live": True,
@@ -98,6 +101,7 @@ class WeatherService:
                         "wind_direction_deg": round(float(data.get("wind_direction_10m", 280.0)), 1),
                         "condition": condition,
                         "weather_code": w_code,
+                        "precipitation_mm": round(precipitation, 2),
                         "updated_at": time.strftime("%H:%M:%S"),
                     }
                     self._cache[grid_key] = weather_data

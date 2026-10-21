@@ -4,10 +4,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 const WS_URL = 'ws://localhost:8000/ws/telemetry';
 
 export function useTelemetry() {
-  const [drones,     setDrones]     = useState([]);
-  const [hub,        setHub]        = useState({ lat: 19.1940, lng: 72.8550 });
-  const [weather,    setWeather]    = useState(null);
-  const [connected,  setConnected]  = useState(false);
+  const [drones, setDrones] = useState([]);
+  const [hub, setHub] = useState({ lat: 19.1940, lng: 72.8550 });
+  const [weather, setWeather] = useState(null);
+  const [connected, setConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimer = useRef(null);
@@ -46,7 +46,19 @@ export function useTelemetry() {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'telemetry') {
-            setDrones(data.drones || []);
+            setDrones(prevDrones => {
+              const incoming = data.drones || [];
+              const prevMap = new Map((prevDrones || []).map(d => [d.id, d]));
+              return incoming.map(inc => {
+                const prev = prevMap.get(inc.id);
+                return {
+                  ...prev,
+                  ...inc,
+                  max_payload_kg: inc.max_payload_kg ?? prev?.max_payload_kg ?? 3.5,
+                  max_speed_kmh: inc.max_speed_kmh ?? prev?.max_speed_kmh ?? 65.0,
+                };
+              });
+            });
             if (data.hub) setHub(data.hub);
             if (data.weather) setWeather(data.weather);
             setLastUpdate(new Date());
@@ -87,7 +99,7 @@ export function useTelemetry() {
           setLastUpdate(new Date());
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       isUnmounted.current = true;
@@ -115,13 +127,13 @@ export function useTelemetry() {
           setLastUpdate(new Date());
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const simulateStorm = useCallback(() => sendCommand('SIMULATE_STORM'), [sendCommand]);
-  const forceRTB      = useCallback(() => sendCommand('FORCE_RTB'),      [sendCommand]);
-  const resetFleet    = useCallback(() => sendCommand('RESET'),          [sendCommand]);
-  const clearFleet    = useCallback(() => sendCommand('CLEAR_FLEET'),    [sendCommand]);
+  const forceRTB = useCallback(() => sendCommand('FORCE_RTB'), [sendCommand]);
+  const resetFleet = useCallback(() => sendCommand('RESET'), [sendCommand]);
+  const clearFleet = useCallback(() => sendCommand('CLEAR_FLEET'), [sendCommand]);
 
   return { drones, hub, weather, connected, lastUpdate, refreshFleet, simulateStorm, forceRTB, resetFleet, clearFleet };
 }
