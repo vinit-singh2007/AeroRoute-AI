@@ -53,7 +53,8 @@ function NavBar({ lastUpdate, currentView, onViewChange, weather }) {
     : currentTime;
 
   return (
-    <nav className="top-nav">
+    <nav className="top-nav" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
+      {/* Left: Logo */}
       <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => onViewChange('landing')}>
         <div className="nav-logo-icon">✈️</div>
         <div>
@@ -61,37 +62,38 @@ function NavBar({ lastUpdate, currentView, onViewChange, weather }) {
         </div>
       </div>
 
-      {/* Right Side: Live Weather Badge & Time Stamp */}
-      <div className="nav-status-bar" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      {/* Center: Live Weather */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
         {weather && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
-            padding: '5px 12px',
-            borderRadius: 6,
-            background: 'rgba(0, 212, 255, 0.05)',
+            gap: 10,
+            padding: '5px 14px',
+            borderRadius: 8,
+            background: 'rgba(0, 212, 255, 0.06)',
             border: '1px solid rgba(0, 212, 255, 0.2)',
             fontSize: 11,
             color: 'var(--text-secondary)',
           }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#06ffa5', boxShadow: '0 0 6px #06ffa5' }} />
-              <strong style={{ color: 'var(--brand-primary)' }}>Live Weather (Open-Meteo):</strong>
-              <span>{weather.condition || 'Clear Sky'} ({weather.temperature_c}°C)</span>
-            </span>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#06ffa5', boxShadow: '0 0 6px #06ffa5', flexShrink: 0 }} />
+            <strong style={{ color: 'var(--brand-primary)', fontWeight: 700 }}>Live Weather:</strong>
+            <span>{weather.condition || 'Clear Sky'} • {weather.temperature_c}°C</span>
             <span style={{
               fontFamily: 'JetBrains Mono, monospace',
-              color: 'var(--text-primary)',
               fontSize: 10.5,
-              borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+              color: 'var(--text-primary)',
+              borderLeft: '1px solid rgba(255,255,255,0.1)',
               paddingLeft: 10,
             }}>
-              Wind: {weather.wind_speed_ms} m/s | Gust: {weather.wind_gust_ms} m/s
+              Wind {weather.wind_speed_ms} m/s | Gust {weather.wind_gust_ms} m/s
             </span>
           </div>
         )}
+      </div>
 
+      {/* Right: Clock */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <div className="nav-status-item">
           <Clock size={12} />
           <span className="text-mono">{timeDisplay}</span>
@@ -127,19 +129,95 @@ export default function App() {
   const [dbStatus, setDbStatus] = useState(null);
   const [tracked3DDroneId, setTracked3DDroneId] = useState(null);
   const [is3DView, setIs3DView] = useState(false);
+  const [isManualRedEmergency, setIsManualRedEmergency] = useState(false);
 
-  // Filter only drones currently in motion (airborne)
+  // ── PRESENTATION / DEMO: MANUAL RED EMERGENCY SIMULATION ──
+  // ── PRESENTATION / DEMO: MANUAL RED EMERGENCY SIMULATION ──
+  // Purely frontend UI state overlay. Never mutates backend state or sends API calls.
+  const displayDrones = useMemo(() => {
+    if (!isManualRedEmergency) return drones;
+
+    if (!drones || drones.length === 0) {
+      return [
+        {
+          id: 'AER-101',
+          model: 'SkyLifter Heavy X4',
+          status: 'DELIVERING',
+          speed_kmh: 74.2,
+          altitude_m: 158.4,
+          battery_pct: 13.8,
+          wind_gust_ms: 24.6,
+          wind_speed_ms: 19.2,
+          fsi: 24,
+          action_status: 'CRITICAL',
+          order_id: 'CRIT-EMERG-809',
+          destination_name: 'Bandra Kurla Complex (Terminal 2)',
+          agent_name: 'Emergency Ground Officer',
+          payload_kg: 4.2,
+          lat: 19.0657,
+          lng: 72.8687,
+          route: [],
+        }
+      ];
+    }
+
+    // Target ONLY the active or selected drone, preserving its own identity
+    const activeInMotion = drones.find(d => ['DELIVERING', 'IN_FLIGHT', 'RETURNING', 'RTB'].includes(d.status));
+    const targetDroneId = selectedDroneId || activeInMotion?.id || drones[0].id;
+
+    return drones.map(d => {
+      if (d.id === targetDroneId) {
+        return {
+          ...d,
+          status: 'DELIVERING',
+          speed_kmh: 74.2,
+          altitude_m: 158.4, // DGCA ceiling breach (> 150m)
+          battery_pct: 13.8, // Critical battery (< 18%)
+          wind_gust_ms: 24.6, // Extreme wind gust (> 20 m/s)
+          wind_speed_ms: 19.2,
+          fsi: 24, // Critical flight safety score (< 40)
+          action_status: 'CRITICAL', // Triggers Fuzzy Logic abort signal
+          order_id: (d.order_id && d.order_id !== 'STANDBY') ? d.order_id : 'CRIT-EMERG-809',
+          destination_name: d.destination_name || 'Bandra Kurla Complex (Terminal 2)',
+          agent_name: d.agent_name || 'Emergency Ground Officer',
+        };
+      }
+      return d;
+    });
+  }, [isManualRedEmergency, drones, selectedDroneId]);
+
+  const displayWeather = useMemo(() => {
+    if (!isManualRedEmergency) return weather;
+    return {
+      ...(weather || {}),
+      condition: 'Severe Thunderstorm',
+      temperature_c: 24.0,
+      wind_speed_ms: 19.2,
+      wind_gust_ms: 24.6,
+      precipitation_mm: 18.5, // Violent Rain > 15 mm/h
+    };
+  }, [isManualRedEmergency, weather]);
+
+  // Filter only drones currently in motion (airborne) with strict ID deduplication
   const motionDrones = useMemo(() => {
-    return drones.filter(d =>
-      ['DELIVERING', 'RETURNING', 'IN_FLIGHT', 'RTB'].includes(d.status) ||
-      (Number(d.speed_kmh) > 0 && d.status !== 'STANDBY' && d.status !== 'IDLE' && d.status !== 'PARACHUTE_DEPLOYED')
-    );
-  }, [drones]);
+    const seen = new Set();
+    return displayDrones.filter(d => {
+      if (!d || !d.id || seen.has(d.id)) return false;
+      const isInMotion =
+        ['DELIVERING', 'RETURNING', 'IN_FLIGHT', 'RTB'].includes(d.status) ||
+        (Number(d.speed_kmh) > 0 && d.status !== 'STANDBY' && d.status !== 'IDLE' && d.status !== 'PARACHUTE_DEPLOYED');
+      if (isInMotion) {
+        seen.add(d.id);
+        return true;
+      }
+      return false;
+    });
+  }, [displayDrones]);
 
   // Drones currently actively delivering cargo
   const deliveringDrones = useMemo(() => {
-    return drones.filter(d => ['DELIVERING', 'IN_FLIGHT'].includes(d.status));
-  }, [drones]);
+    return displayDrones.filter(d => ['DELIVERING', 'IN_FLIGHT'].includes(d.status));
+  }, [displayDrones]);
 
   const tracked3DDrone = useMemo(() => {
     if (!tracked3DDroneId) return null;
@@ -261,6 +339,7 @@ export default function App() {
             onOpenPredictions={() => navigateView('dashboard')}
             onOpenMissions={() => navigateView('dashboard')}
             activeDronesCount={drones.length}
+            weather={weather}
           />
         ) : (
           <div className="main-content" style={{ display: 'flex', flex: 1, height: '100vh', overflow: 'hidden' }}>
@@ -289,6 +368,14 @@ export default function App() {
               dronesCount={drones.length}
               isTelemetryCollapsed={isTelemetryCollapsed}
               onExpandTelemetry={() => setIsTelemetryCollapsed(false)}
+              isManualRedEmergency={isManualRedEmergency}
+              onToggleManualEmergency={(val) => {
+                const nextVal = typeof val === 'boolean' ? val : !isManualRedEmergency;
+                setIsManualRedEmergency(nextVal);
+                if (nextVal) {
+                  setIsTelemetryCollapsed(false);
+                }
+              }}
             />
 
             {/* ── RIGHT VIEWPORT: Active View Page (Flex 1) ── */}
@@ -380,7 +467,7 @@ export default function App() {
                     </div>
 
                     <FleetMap
-                      drones={drones}
+                      drones={displayDrones}
                       hub={hub}
                       routeResult={routeResult}
                       selectedDroneId={selectedDroneId}
@@ -726,10 +813,10 @@ export default function App() {
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto' }}>
                           <TelemetryHUD
-                            drones={drones}
-                            selectedDroneId={selectedDroneId}
+                            drones={displayDrones}
+                            selectedDroneId={isManualRedEmergency && !selectedDroneId ? displayDrones[0]?.id : selectedDroneId}
                             onDroneSelect={setSelectedDroneId}
-                            weather={weather}
+                            weather={displayWeather}
                           />
                         </div>
                       </>

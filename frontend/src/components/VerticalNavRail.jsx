@@ -24,6 +24,8 @@ export default function VerticalNavRail({
   dronesCount = 3,
   isTelemetryCollapsed = false,
   onExpandTelemetry,
+  isManualRedEmergency = false,
+  onToggleManualEmergency,
 }) {
   return (
     <aside style={{
@@ -228,6 +230,180 @@ export default function VerticalNavRail({
             />
           ))}
         </nav>
+      </div>
+
+      {/* ── SIMULATION / PRESENTATION TOGGLE (Below Fleet Ops, Above Collapse Sidebar) ── */}
+      <div style={{
+        marginTop: 'auto',
+        marginBottom: 10,
+        paddingTop: 10,
+      }}>
+        {!isCollapsed ? (
+          <div style={{
+            padding: '10px 10px',
+            borderRadius: 10,
+            background: isManualRedEmergency
+              ? 'radial-gradient(circle at 50% 0%, rgba(255, 61, 87, 0.22) 0%, rgba(20, 8, 14, 0.95) 100%)'
+              : 'rgba(255, 255, 255, 0.03)',
+            border: isManualRedEmergency
+              ? '1.5px solid rgba(255, 61, 87, 0.65)'
+              : '1px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: isManualRedEmergency
+              ? '0 0 18px rgba(255, 61, 87, 0.3), inset 0 0 10px rgba(255, 61, 87, 0.15)'
+              : 'none',
+            transition: 'all 200ms ease',
+          }}>
+            {/* Header / Mode Indicator */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 8,
+            }}>
+              <span style={{
+                fontSize: 9.5,
+                fontWeight: 800,
+                letterSpacing: '1.2px',
+                color: isManualRedEmergency ? '#ff7283' : 'var(--text-muted)',
+                textTransform: 'uppercase',
+              }}>
+                TELEMETRY MODE
+              </span>
+              <span style={{
+                fontSize: 9,
+                fontWeight: 800,
+                padding: '2px 7px',
+                borderRadius: 12,
+                background: isManualRedEmergency ? 'rgba(255, 61, 87, 0.25)' : 'rgba(6, 255, 165, 0.15)',
+                color: isManualRedEmergency ? '#ff3d57' : '#06ffa5',
+                border: `1px solid ${isManualRedEmergency ? 'rgba(255, 61, 87, 0.5)' : 'rgba(6, 255, 165, 0.4)'}`,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}>
+                <span style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  background: isManualRedEmergency ? '#ff3d57' : '#06ffa5',
+                  boxShadow: isManualRedEmergency ? '0 0 6px #ff3d57' : '0 0 6px #06ffa5',
+                }} />
+                {isManualRedEmergency ? 'EMERGENCY' : 'LIVE'}
+              </span>
+            </div>
+
+            {/* 2-Way Interactive Segmented Switch */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 4,
+              background: 'rgba(0, 0, 0, 0.45)',
+              padding: 3,
+              borderRadius: 8,
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+            }}>
+              {/* Option 1: Live (Normal working mode) */}
+              <button
+                type="button"
+                id="toggle-live-mode-btn"
+                onClick={() => onToggleManualEmergency?.(false)}
+                title="Switch to Real Live Telemetry"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 5,
+                  padding: '6px 4px',
+                  borderRadius: 6,
+                  border: !isManualRedEmergency ? '1px solid rgba(6, 255, 165, 0.4)' : '1px solid transparent',
+                  background: !isManualRedEmergency ? 'rgba(6, 255, 165, 0.16)' : 'transparent',
+                  color: !isManualRedEmergency ? '#06ffa5' : 'var(--text-muted)',
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <span>Live</span>
+              </button>
+
+              {/* Option 2: Manual Red Emergency (Presentation Mode) */}
+              <button
+                type="button"
+                id="toggle-red-emergency-btn"
+                onClick={() => onToggleManualEmergency?.(true)}
+                title="Simulate Red Emergency State (Frontend presentation only)"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  padding: '6px 4px',
+                  borderRadius: 6,
+                  border: isManualRedEmergency ? '1px solid rgba(255, 61, 87, 0.7)' : '1px solid transparent',
+                  background: isManualRedEmergency ? 'rgba(255, 61, 87, 0.28)' : 'transparent',
+                  color: isManualRedEmergency ? '#ff3d57' : 'var(--text-muted)',
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease',
+                  fontFamily: 'inherit',
+                  boxShadow: isManualRedEmergency ? '0 0 10px rgba(255, 61, 87, 0.35)' : 'none',
+                }}
+              >
+                <span>🚨 Red Alert</span>
+              </button>
+            </div>
+
+            {/* Explainer caption */}
+            <div style={{
+              marginTop: 6,
+              fontSize: 9,
+              color: isManualRedEmergency ? '#ff9ca7' : 'var(--text-muted)',
+              textAlign: 'center',
+              lineHeight: 1.25,
+            }}>
+              {isManualRedEmergency ? '⚠ Presentation Simulation Active' : 'Normal Live Stream'}
+            </div>
+          </div>
+        ) : (
+          /* Collapsed Sidebar Compact Button */
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
+            <button
+              type="button"
+              id="toggle-mode-collapsed-btn"
+              onClick={() => onToggleManualEmergency?.(!isManualRedEmergency)}
+              title={isManualRedEmergency ? '🚨 Red Emergency Active (Click to switch to Live)' : '🟢 Live Mode (Click to simulate Red Emergency)'}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                border: isManualRedEmergency ? '1.5px solid rgba(255, 61, 87, 0.8)' : '1px solid rgba(6, 255, 165, 0.4)',
+                background: isManualRedEmergency ? 'rgba(255, 61, 87, 0.25)' : 'rgba(6, 255, 165, 0.1)',
+                boxShadow: isManualRedEmergency ? '0 0 14px rgba(255, 61, 87, 0.45)' : 'none',
+                transition: 'all 180ms ease',
+                padding: 0,
+              }}
+            >
+              <span style={{ fontSize: 14 }}>{isManualRedEmergency ? '🚨' : '🟢'}</span>
+              <span style={{
+                fontSize: 8,
+                fontWeight: 900,
+                marginTop: 2,
+                color: isManualRedEmergency ? '#ff3d57' : '#06ffa5',
+                letterSpacing: '0.4px',
+              }}>
+                {isManualRedEmergency ? 'ALERT' : 'LIVE'}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── BOTTOM SECTION: Collapse / Expand Rail Toggle ── */}

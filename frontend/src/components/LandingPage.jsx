@@ -2,7 +2,7 @@
 import React from 'react';
 import { Navigation, ArrowRight, MapPin, Shield, Radio, Cpu } from 'lucide-react';
 
-export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOpenMissions }) {
+export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOpenMissions, weather }) {
   return (
     <div style={{
       height: '100vh',
@@ -39,34 +39,57 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
         zIndex: 1,
       }} />
 
-      {/* Top Section: Discreet Status Pill */}
-      <div style={{
-        position: 'relative',
-        zIndex: 10,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '5px 16px',
-        borderRadius: 24,
-        background: 'rgba(5, 12, 24, 0.65)',
-        border: '1px solid rgba(0, 212, 255, 0.3)',
-        backdropFilter: 'blur(10px)',
-        boxShadow: '0 0 15px rgba(0, 212, 255, 0.15)',
-      }}>
-        <div className="pulse-dot" />
-        <span style={{
-          fontSize: 11,
-          fontWeight: 800,
-          color: 'var(--brand-primary)',
-          letterSpacing: '1.2px',
-          textTransform: 'uppercase'
+      {/* Top Section: Status Pill + Weather Badge */}
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '5px 16px',
+          borderRadius: 24,
+          background: 'rgba(5, 12, 24, 0.65)',
+          border: '1px solid rgba(0, 212, 255, 0.3)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 0 15px rgba(0, 212, 255, 0.15)',
         }}>
-          Mumbai Airspace • Autonomous Mission Control
-        </span>
+          <div className="pulse-dot" />
+          <span style={{
+            fontSize: 11,
+            fontWeight: 800,
+            color: 'var(--brand-primary)',
+            letterSpacing: '1.2px',
+            textTransform: 'uppercase'
+          }}>
+            Mumbai Airspace • Autonomous Mission Control
+          </span>
+        </div>
+
+        {/* Weather Badge — shown when data is available */}
+        {weather && (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '5px 14px',
+            borderRadius: 24,
+            background: 'rgba(5, 12, 24, 0.65)',
+            border: '1px solid rgba(0, 212, 255, 0.2)',
+            backdropFilter: 'blur(10px)',
+            fontSize: 11,
+            color: 'var(--text-secondary)',
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#06ffa5', boxShadow: '0 0 6px #06ffa5', flexShrink: 0 }} />
+            <strong style={{ color: 'var(--brand-primary)', fontWeight: 700 }}>Live Weather:</strong>
+            <span>{weather.condition || 'Clear Sky'} • {weather.temperature_c}°C</span>
+            <span style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: 10, fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: 'var(--text-primary)' }}>
+              Wind {weather.wind_speed_ms} m/s | Gust {weather.wind_gust_ms} m/s
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Flexible Spacer to leave the drone completely visible in the middle */}
-      <div style={{ flex: 1, minHeight: '120px' }} />
+      <div style={{ flex: 1, minHeight: '260px' }} />
 
       {/* Bottom Section: Hero Text, CTA Button, and Floating Badges */}
       <div style={{
@@ -77,7 +100,7 @@ export default function LandingPage({ onLaunchDashboard, onOpenPredictions, onOp
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 0,
       }}>
         {/* Sleek Hero Title positioned in the lower area */}
         <h1 style={{

@@ -280,12 +280,20 @@ function FSIRing({ score, isAlert = false }) {
 }
 
 export default function TelemetryHUD({ drones = [], selectedDroneId, onDroneSelect, weather }) {
-  // ── FILTER: ONLY DRONES CURRENTLY IN MOTION ──
+  // ── FILTER: ONLY DRONES CURRENTLY IN MOTION (STRICTLY UNIQUE BY ID) ──
   const motionDrones = useMemo(() => {
-    return drones.filter(d =>
-      ['DELIVERING', 'RETURNING', 'IN_FLIGHT', 'RTB'].includes(d.status) ||
-      (Number(d.speed_kmh) > 0 && d.status !== 'STANDBY' && d.status !== 'IDLE' && d.status !== 'PARACHUTE_DEPLOYED')
-    );
+    const seen = new Set();
+    return (drones || []).filter(d => {
+      if (!d || !d.id || seen.has(d.id)) return false;
+      const isInMotion =
+        ['DELIVERING', 'RETURNING', 'IN_FLIGHT', 'RTB'].includes(d.status) ||
+        (Number(d.speed_kmh) > 0 && d.status !== 'STANDBY' && d.status !== 'IDLE' && d.status !== 'PARACHUTE_DEPLOYED');
+      if (isInMotion) {
+        seen.add(d.id);
+        return true;
+      }
+      return false;
+    });
   }, [drones]);
 
   // Selected drone must be an active in-motion drone
